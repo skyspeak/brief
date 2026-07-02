@@ -1,0 +1,17 @@
+node_modules
+.next
+.vercel
+*.log
+.DS_Store
+
+# secrets & local env
+.env
+.env.*
+!.env.example
+*.db
+local.db
+
+# leftover exports / artifacts
+files/
+files.zip
+newsletter-magazine/

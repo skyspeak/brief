@@ -1,0 +1,21 @@
+{
+  "name": "newsletter-magazine",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "setup": "node scripts/seed.mjs",
+    "seed": "node scripts/seed.mjs"
+  },
+  "dependencies": {
+    "next": "^14.2.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@libsql/client": "^0.15.0",
+    "svix": "^1.45.0",
+    "puppeteer-core": "^23.11.1",
+    "@sparticuz/chromium": "^131.0.0"
+  }
+}
