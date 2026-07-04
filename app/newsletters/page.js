@@ -51,7 +51,7 @@ export default function NewslettersPage() {
       const r = await fetch("/api/summarize", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ key, id: id || undefined }),
+        body: JSON.stringify({ key, id: id || undefined, force: !!id }),
       });
       const parsed = await parseApiResponse(r);
       const d = parsed.data;

@@ -70,7 +70,12 @@ export async function POST(req) {
       // Skip LLM map step for confirmation emails — not newsletter content.
       if (!isConfirm && body && body.length > 120) {
         try {
-          const { summary, tags } = await summarizeEmail({ subject, sender, body });
+          const { summary, tags } = await summarizeEmail({
+            subject,
+            sender,
+            body,
+            receivedAt: Math.floor(Date.now() / 1000),
+          });
           await updateSummary(id, summary, tags);
         } catch (e) {
           console.error("[summarize] failed:", e.message);
