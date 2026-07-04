@@ -21,8 +21,47 @@ export default function Home() {
   const [persona, setPersona] = useState("neutral");
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
+  const [summarizing, setSummarizing] = useState(false);
+  const [pendingCount, setPendingCount] = useState(null);
+  const [summarizeMsg, setSummarizeMsg] = useState("");
   const [res, setRes] = useState(null);
   const [err, setErr] = useState("");
+
+  async function refreshPending() {
+    if (!key.trim()) return;
+    try {
+      const r = await fetch(`/api/newsletters?key=${encodeURIComponent(key)}`);
+      const d = await r.json();
+      if (r.ok) setPendingCount(d.pending_count);
+    } catch {
+      setPendingCount(null);
+    }
+  }
+
+  async function summarizePending() {
+    if (!key.trim()) {
+      setErr("Enter your access key first");
+      return;
+    }
+    setErr("");
+    setSummarizeMsg("");
+    setSummarizing(true);
+    try {
+      const r = await fetch("/api/summarize", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ key }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "summarize failed");
+      setSummarizeMsg(`Summarized ${d.summarized ?? 0} of ${d.processed ?? 0} pending newsletters.`);
+      await refreshPending();
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setSummarizing(false);
+    }
+  }
 
   async function ask() {
     if (!q.trim()) return;
@@ -136,7 +175,11 @@ export default function Home() {
           <input
             type="password"
             value={key}
-            onChange={(e) => setKey(e.target.value)}
+            onChange={(e) => {
+              setKey(e.target.value);
+              setPendingCount(null);
+            }}
+            onBlur={refreshPending}
             placeholder="access key (CRON_SECRET)"
             style={{
               flex: 1,
@@ -167,7 +210,57 @@ export default function Home() {
             {loading ? "Reading…" : "Ask"}
           </button>
         </div>
-        <div style={{ fontSize: 13, color: "#6b6356", marginTop: 6, fontFamily: '"Helvetica Neue", Arial, sans-serif' }}>
+
+        <section
+          style={{
+            marginTop: 20,
+            padding: 16,
+            border: `2px solid ${ink}`,
+            background: "#fff",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: '"Helvetica Neue", Arial, sans-serif',
+              fontSize: 10,
+              letterSpacing: ".16em",
+              textTransform: "uppercase",
+              color: "#6b6356",
+              marginBottom: 8,
+            }}
+          >
+            Ingest
+          </div>
+          <p style={{ fontSize: 14, lineHeight: 1.5, margin: "0 0 12px", color: "#6b6356" }}>
+            Run the map-step summarizer on newsletters that arrived without a summary.
+            {pendingCount !== null && (
+              <strong style={{ color: ink }}> {pendingCount} pending right now.</strong>
+            )}
+          </p>
+          <button
+            onClick={summarizePending}
+            disabled={summarizing || !key.trim()}
+            style={{
+              fontFamily: '"Helvetica Neue", Arial, sans-serif',
+              fontSize: 13,
+              fontWeight: 700,
+              letterSpacing: ".08em",
+              textTransform: "uppercase",
+              padding: "12px 24px",
+              border: "none",
+              background: summarizing || !key.trim() ? "#b9a99f" : ink,
+              color: "#fff",
+              cursor: summarizing || !key.trim() ? "default" : "pointer",
+            }}
+          >
+            {summarizing ? "Summarizing…" : "Summarize this"}
+          </button>
+          {summarizeMsg && (
+            <div style={{ marginTop: 10, fontSize: 14, color: "#3f7d3f" }}>{summarizeMsg}</div>
+          )}
+        </section>
+
+        <div style={{ fontSize: 13, color: "#6b6356", marginTop: 12, fontFamily: '"Helvetica Neue", Arial, sans-serif' }}>
           ⌘/Ctrl + Enter to submit ·{" "}
           <a href="/newsletters" style={{ color: accent }}>
             Browse newsletters

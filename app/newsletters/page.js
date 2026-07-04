@@ -150,7 +150,7 @@ export default function NewslettersPage() {
           >
             {summarizing === "all"
               ? "Summarizing…"
-              : `Summarize all pending (${data.pending_count})`}
+              : `Summarize this — all pending (${data.pending_count})`}
           </button>
         )}
 
@@ -218,7 +218,7 @@ export default function NewslettersPage() {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {summarizing === n.id ? "…" : "Summarize"}
+                  {summarizing === n.id ? "…" : "Summarize this"}
                 </button>
               )}
             </div>
