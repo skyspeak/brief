@@ -44,9 +44,21 @@ export default function NewslettersPage() {
     }
   }, [key]);
 
+  const [msg, setMsg] = useState("");
+
+  async function requireKey() {
+    if (!key.trim()) {
+      setErr("Enter your access key (CRON_SECRET) first.");
+      return false;
+    }
+    return true;
+  }
+
   async function summarize(id) {
+    if (!(await requireKey())) return;
     setSummarizing(id || "all");
     setErr("");
+    setMsg("");
     try {
       const r = await fetch("/api/summarize", {
         method: "POST",
@@ -57,8 +69,16 @@ export default function NewslettersPage() {
       const d = parsed.data;
       if (!d) throw new Error(apiError(parsed, "summarize failed"));
       if (!r.ok) throw new Error(apiError(parsed, "summarize failed"));
-      const firstErr = d.results?.find((r) => r.error)?.error;
-      if ((d.summarized ?? 0) === 0 && firstErr) throw new Error(firstErr);
+      if (d.error) throw new Error(d.error);
+      if (d.summarized) {
+        setMsg("Summarized — expand the row to see the extract.");
+      } else if (d.skipped) {
+        setMsg(d.reason || "Skipped.");
+      } else if (d.results) {
+        const firstErr = d.results.find((r) => r.error)?.error;
+        if (firstErr) throw new Error(firstErr);
+        setMsg(`Processed ${d.summarized ?? 0} of ${d.processed ?? 0}.`);
+      }
       await load();
     } catch (e) {
       setErr(e.message);
@@ -68,23 +88,40 @@ export default function NewslettersPage() {
   }
 
   async function summarizeAll() {
+    if (!(await requireKey())) return;
     setSummarizing("all");
     setErr("");
+    setMsg("Extracting…");
     try {
-      const r = await fetch("/api/summarize", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ key }),
-      });
-      const parsed = await parseApiResponse(r);
-      const d = parsed.data;
-      if (!d) throw new Error(apiError(parsed, "summarize failed"));
-      if (!r.ok) throw new Error(apiError(parsed, "summarize failed"));
-      const firstErr = d.results?.find((r) => r.error)?.error;
-      if ((d.summarized ?? 0) === 0 && firstErr) throw new Error(firstErr);
+      let done = 0;
+      for (let i = 0; i < 200; i++) {
+        const r = await fetch("/api/summarize", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ key, limit: 1 }),
+        });
+        const parsed = await parseApiResponse(r);
+        const d = parsed.data;
+        if (!d) throw new Error(apiError(parsed, "summarize failed"));
+        if (!r.ok) throw new Error(apiError(parsed, "summarize failed"));
+        if ((d.remaining ?? 0) === 0) break;
+        done += d.summarized ?? 0;
+        setMsg(`Extracting… ${done} done, ${d.remaining} remaining`);
+        const firstErr = d.results?.find((x) => x.error)?.error;
+        if ((d.summarized ?? 0) === 0 && firstErr) {
+          if (d.rate_limited) {
+            setMsg("Rate limited — waiting 15s…");
+            await new Promise((x) => setTimeout(x, 15000));
+            continue;
+          }
+          throw new Error(firstErr);
+        }
+      }
+      setMsg(`Done — ${done} extracted. Use Generate briefing on the homepage for the full digest.`);
       await load();
     } catch (e) {
       setErr(e.message);
+      setMsg("");
     } finally {
       setSummarizing(null);
     }
@@ -176,6 +213,7 @@ export default function NewslettersPage() {
         </div>
 
         {err && <div style={{ color: accent, marginBottom: 16, fontSize: 14 }}>{err}</div>}
+        {msg && <div style={{ color: green, marginBottom: 16, fontSize: 14 }}>{msg}</div>}
 
         {data && (
           <div

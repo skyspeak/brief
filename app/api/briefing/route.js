@@ -26,7 +26,9 @@ export async function POST(req) {
       await cleanAllBodies();
     }
 
-    const rows = (await allEmailsForBriefing()).filter((e) => !isConfirmationEmail(e));
+    const rows = (await allEmailsForBriefing()).filter(
+      (e) => !isConfirmationEmail(e) && e.tags !== "confirmation"
+    );
     if (!rows.length) {
       return Response.json({ error: "no newsletters in corpus yet" }, { status: 400 });
     }

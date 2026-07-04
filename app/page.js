@@ -41,12 +41,12 @@ export default function Home() {
 
   async function generateBriefing() {
     if (!key.trim()) {
-      setErr("Enter your access key first");
+      setErr("Enter your access key (CRON_SECRET) in the field above, then try again.");
       return;
     }
     setErr("");
     setRes(null);
-    setProgress("");
+    setProgress("Starting…");
     setBriefing(true);
 
     try {
@@ -57,11 +57,14 @@ export default function Home() {
         body: JSON.stringify({ key }),
       });
       const cleanParsed = await parseApiResponse(cleanRes);
+      if (!cleanParsed.data && !cleanRes.ok) {
+        throw new Error(apiError(cleanParsed, "clean failed"));
+      }
       if (!cleanRes.ok) throw new Error(apiError(cleanParsed, "clean failed"));
 
       let extracted = 0;
+      let stalls = 0;
       for (let guard = 0; guard < 200; guard++) {
-        setProgress(`Extracting facts from newsletters… (${extracted} done)`);
         const sumRes = await fetch("/api/summarize", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -72,18 +75,32 @@ export default function Home() {
         if (!d) throw new Error(apiError(sumParsed, "summarize failed"));
         if (!sumRes.ok) throw new Error(apiError(sumParsed, "summarize failed"));
 
-        if ((d.processed ?? 0) === 0 || (d.remaining ?? 0) === 0) break;
+        const remaining = d.remaining ?? 0;
+        setProgress(
+          remaining > 0
+            ? `Extracting facts… ${extracted} done, ${remaining} remaining`
+            : `Extracting facts… ${extracted} done`
+        );
 
-        extracted += d.summarized ?? 0;
-        const firstErr = d.results?.find((r) => r.error)?.error;
-        if ((d.summarized ?? 0) === 0 && firstErr) {
-          if (d.rate_limited) {
+        if (remaining === 0) break;
+
+        if ((d.summarized ?? 0) > 0) {
+          extracted += d.summarized;
+          stalls = 0;
+        } else {
+          stalls++;
+          const firstErr = d.results?.find((r) => r.error)?.error;
+          if (firstErr && d.rate_limited) {
             setProgress("Rate limited — waiting 15s…");
             await new Promise((r) => setTimeout(r, 15000));
             continue;
           }
-          throw new Error(firstErr);
+          if (firstErr) throw new Error(firstErr);
+          if (stalls >= 5) {
+            throw new Error("Stuck — no progress after several attempts. Check GEMINI_API_KEY in Vercel.");
+          }
         }
+
         if (d.rate_limited) {
           setProgress("Rate limited — waiting 15s…");
           await new Promise((r) => setTimeout(r, 15000));
@@ -295,8 +312,9 @@ export default function Home() {
             )}
           </p>
           <button
+            type="button"
             onClick={generateBriefing}
-            disabled={briefing || !key.trim()}
+            disabled={briefing}
             style={{
               fontFamily: '"Helvetica Neue", Arial, sans-serif',
               fontSize: 13,
@@ -305,13 +323,18 @@ export default function Home() {
               textTransform: "uppercase",
               padding: "12px 24px",
               border: "none",
-              background: briefing || !key.trim() ? "#b9a99f" : ink,
+              background: briefing ? "#b9a99f" : ink,
               color: "#fff",
-              cursor: briefing || !key.trim() ? "default" : "pointer",
+              cursor: briefing ? "default" : "pointer",
             }}
           >
             {briefing ? "Working…" : "Generate briefing (all newsletters)"}
           </button>
+          {!key.trim() && (
+            <div style={{ marginTop: 8, fontSize: 13, color: accent }}>
+              Enter your access key above to run this.
+            </div>
+          )}
           {progress && (
             <div style={{ marginTop: 10, fontSize: 14, color: "#3f7d3f" }}>{progress}</div>
           )}

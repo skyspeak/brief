@@ -74,7 +74,9 @@ export async function POST(req) {
       const isConfirm = isConfirmationEmail({ subject, body_text: body, body_html: bodyHtml });
 
       // Skip LLM map step for confirmation emails — not newsletter content.
-      if (!isConfirm && body && body.length > 120) {
+      if (isConfirm) {
+        await updateSummary(id, "None", "confirmation");
+      } else if (body && body.length > 120) {
         try {
           const { summary, tags } = await summarizeEmail({
             subject,
