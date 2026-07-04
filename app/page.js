@@ -8,6 +8,7 @@ const accent = "#9a2515";
 const rule = "#c9bfae";
 
 const PERSONAS = [
+  { id: "neutral", label: "Neutral (no persona)" },
   { id: "general", label: "General Manager" },
   { id: "sales", label: "Sales (CRO)" },
   { id: "marketing", label: "Marketing (CMO)" },
@@ -17,7 +18,7 @@ const PERSONAS = [
 
 export default function Home() {
   const [key, setKey] = useState("");
-  const [persona, setPersona] = useState("general");
+  const [persona, setPersona] = useState("neutral");
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
   const [res, setRes] = useState(null);
@@ -168,6 +169,10 @@ export default function Home() {
         </div>
         <div style={{ fontSize: 13, color: "#6b6356", marginTop: 6, fontFamily: '"Helvetica Neue", Arial, sans-serif' }}>
           ⌘/Ctrl + Enter to submit ·{" "}
+          <a href="/newsletters" style={{ color: accent }}>
+            Browse newsletters
+          </a>
+          {" · "}
           <a href="/confirm" style={{ color: accent }}>
             Confirm subscriptions
           </a>
