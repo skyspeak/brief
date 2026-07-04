@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { parseApiResponse, apiError } from "@/lib/parse-api-response";
 
 const paper = "#faf7f0";
 const ink = "#1a1714";
@@ -182,8 +183,10 @@ export default function ConfirmPage() {
     setLoading(true);
     try {
       const r = await fetch(`/api/confirmations?key=${encodeURIComponent(key)}`);
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "request failed");
+      const parsed = await parseApiResponse(r);
+      const d = parsed.data;
+      if (!d) throw new Error(apiError(parsed, "request failed"));
+      if (!r.ok) throw new Error(apiError(parsed, "request failed"));
       setData(d);
     } catch (e) {
       setErr(e.message);

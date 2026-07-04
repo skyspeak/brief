@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { parseApiResponse, apiError } from "@/lib/parse-api-response";
 
 const paper = "#faf7f0";
 const ink = "#1a1714";
@@ -31,8 +32,10 @@ export default function NewslettersPage() {
     setLoading(true);
     try {
       const r = await fetch(`/api/newsletters?key=${encodeURIComponent(key)}`);
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "request failed");
+      const parsed = await parseApiResponse(r);
+      const d = parsed.data;
+      if (!d) throw new Error(apiError(parsed, "request failed"));
+      if (!r.ok) throw new Error(apiError(parsed, "request failed"));
       setData(d);
     } catch (e) {
       setErr(e.message);
@@ -50,8 +53,10 @@ export default function NewslettersPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ key, id: id || undefined }),
       });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "summarize failed");
+      const parsed = await parseApiResponse(r);
+      const d = parsed.data;
+      if (!d) throw new Error(apiError(parsed, "summarize failed"));
+      if (!r.ok) throw new Error(apiError(parsed, "summarize failed"));
       await load();
     } catch (e) {
       setErr(e.message);
@@ -69,8 +74,10 @@ export default function NewslettersPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ key }),
       });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "summarize failed");
+      const parsed = await parseApiResponse(r);
+      const d = parsed.data;
+      if (!d) throw new Error(apiError(parsed, "summarize failed"));
+      if (!r.ok) throw new Error(apiError(parsed, "summarize failed"));
       await load();
     } catch (e) {
       setErr(e.message);

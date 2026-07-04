@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { parseApiResponse, apiError } from "@/lib/parse-api-response";
 
 const paper = "#faf7f0";
 const ink = "#1a1714";
@@ -31,8 +32,8 @@ export default function Home() {
     if (!key.trim()) return;
     try {
       const r = await fetch(`/api/newsletters?key=${encodeURIComponent(key)}`);
-      const d = await r.json();
-      if (r.ok) setPendingCount(d.pending_count);
+      const parsed = await parseApiResponse(r);
+      if (parsed.data && r.ok) setPendingCount(parsed.data.pending_count);
     } catch {
       setPendingCount(null);
     }
@@ -52,9 +53,12 @@ export default function Home() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ key }),
       });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "summarize failed");
-      setSummarizeMsg(`Summarized ${d.summarized ?? 0} of ${d.processed ?? 0} pending newsletters.`);
+      const parsed = await parseApiResponse(r);
+      const d = parsed.data;
+      if (!d) throw new Error(apiError(parsed, "summarize failed"));
+      if (!r.ok) throw new Error(apiError(parsed, "summarize failed"));
+      const more = d.processed < (pendingCount ?? d.processed) ? " Click again if more are pending." : "";
+      setSummarizeMsg(`Summarized ${d.summarized ?? 0} of ${d.processed ?? 0} newsletters.${more}`);
       await refreshPending();
     } catch (e) {
       setErr(e.message);
@@ -74,8 +78,10 @@ export default function Home() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ question: q, key, persona }),
       });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "request failed");
+      const parsed = await parseApiResponse(r);
+      const d = parsed.data;
+      if (!d) throw new Error(apiError(parsed, "request failed"));
+      if (!r.ok) throw new Error(apiError(parsed, "request failed"));
       setRes(d);
     } catch (e) {
       setErr(e.message);
@@ -233,6 +239,7 @@ export default function Home() {
           </div>
           <p style={{ fontSize: 14, lineHeight: 1.5, margin: "0 0 12px", color: "#6b6356" }}>
             Run the map-step summarizer on newsletters that arrived without a summary.
+            Processes <strong>3 at a time</strong> to avoid timeouts and rate limits — click again if more remain.
             {pendingCount !== null && (
               <strong style={{ color: ink }}> {pendingCount} pending right now.</strong>
             )}
