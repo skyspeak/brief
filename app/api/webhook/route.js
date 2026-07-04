@@ -1,6 +1,7 @@
 // app/api/webhook/route.js — Resend inbound → verify → store → summarize.
 import { Webhook } from "svix";
 import { insertEmail, updateSummary } from "@/lib/db";
+import { fetchReceivedEmail } from "@/lib/resend";
 import { summarizeEmail } from "@/lib/summarize";
 
 export const runtime = "nodejs";
@@ -20,27 +21,8 @@ const htmlToText = (h = "") =>
     .trim();
 
 export async function POST(req) {
-  const runId = "webhook-pre-fix";
-  const dbg = (hypothesisId, location, message, data) => {
-    // #region agent log
-    console.error("[debug-63c155]", JSON.stringify({ hypothesisId, location, message, data, timestamp: Date.now() }));
-    fetch("http://127.0.0.1:7503/ingest/cc750943-9d9a-4237-90bc-50c1a19a76d2", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "63c155" },
-      body: JSON.stringify({ sessionId: "63c155", runId, hypothesisId, location, message, data, timestamp: Date.now() }),
-    }).catch(() => {});
-    // #endregion
-  };
-
   try {
     const payload = await req.text();
-    dbg("A", "webhook:entry", "webhook received", {
-      payloadLen: payload.length,
-      hasWebhookSecret: !!process.env.RESEND_WEBHOOK_SECRET,
-      hasTursoUrl: !!process.env.TURSO_DATABASE_URL,
-      hasTursoToken: !!process.env.TURSO_AUTH_TOKEN,
-      hasSvixId: !!req.headers.get("svix-id"),
-    });
 
     let evt;
     if (process.env.RESEND_WEBHOOK_SECRET) {
@@ -50,64 +32,60 @@ export async function POST(req) {
           "svix-timestamp": req.headers.get("svix-timestamp"),
           "svix-signature": req.headers.get("svix-signature"),
         });
-        dbg("D", "webhook:verify", "signature verified", { eventType: evt?.type });
-      } catch (verifyErr) {
-        dbg("D", "webhook:verify", "signature failed", { error: verifyErr?.message });
+      } catch {
         return Response.json({ error: "bad signature" }, { status: 400 });
       }
     } else {
       evt = JSON.parse(payload);
-      dbg("D", "webhook:parse", "parsed without secret", { eventType: evt?.type });
     }
 
     if (evt.type === "email.received") {
+      if (!process.env.TURSO_DATABASE_URL || !process.env.TURSO_AUTH_TOKEN) {
+        return Response.json(
+          { error: "database not configured — set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN in Vercel" },
+          { status: 503 }
+        );
+      }
+
       const x = evt.data;
       const id = x?.email_id || x?.id || crypto.randomUUID();
-      const body = x?.text || htmlToText(x?.html);
-      dbg("B", "webhook:payload", "email.received parsed", {
-        hasData: !!x,
-        id,
-        hasText: !!x?.text,
-        hasHtml: !!x?.html,
-        bodyLen: body?.length ?? 0,
-        fromType: typeof x?.from,
-        subjectLen: (x?.subject || "").length,
-        dataKeys: x ? Object.keys(x).slice(0, 12) : [],
-      });
+      let body = x?.text || htmlToText(x?.html);
+      let subject = x?.subject || "";
+      let sender = x?.from;
 
-      try {
-        await insertEmail({
-          id,
-          sender: x.from,
-          subject: x.subject || "",
-          body_text: body,
-          received_at: Math.floor(Date.now() / 1000),
-        });
-        dbg("A", "webhook:db", "insertEmail ok", { id });
-      } catch (dbErr) {
-        dbg("A", "webhook:db", "insertEmail failed", { error: dbErr?.message, name: dbErr?.name });
-        throw dbErr;
+      // Resend webhooks are metadata-only — fetch body via Receiving API.
+      if (id && process.env.RESEND_API_KEY) {
+        try {
+          const full = await fetchReceivedEmail(id);
+          body = full.text || htmlToText(full.html) || body;
+          subject = full.subject || subject;
+          sender = full.from || sender;
+        } catch (e) {
+          console.error("[webhook] Resend fetch failed:", e.message);
+        }
       }
+
+      await insertEmail({
+        id,
+        sender,
+        subject,
+        body_text: body,
+        received_at: Math.floor(Date.now() / 1000),
+      });
 
       if (body && body.length > 120) {
         try {
-          const { summary, tags } = await summarizeEmail({ subject: x.subject || "", sender: x.from, body });
+          const { summary, tags } = await summarizeEmail({ subject, sender, body });
           await updateSummary(id, summary, tags);
-          dbg("E", "webhook:summarize", "summarize ok", { id, summaryLen: summary?.length ?? 0 });
         } catch (e) {
-          dbg("E", "webhook:summarize", "summarize failed", { error: e?.message });
           console.error("[summarize] failed:", e.message);
         }
-      } else {
-        dbg("B", "webhook:body", "skipped summarize — no body in webhook payload", { bodyLen: body?.length ?? 0 });
       }
-    } else {
-      dbg("D", "webhook:event", "ignored event type", { eventType: evt?.type });
     }
 
     return Response.json({ ok: true });
   } catch (err) {
-    dbg("A", "webhook:catch", "unhandled error", { error: err?.message, name: err?.name, stack: err?.stack?.slice(0, 300) });
+    console.error("[webhook] error:", err.message);
     return Response.json({ error: "internal error" }, { status: 500 });
   }
 }
