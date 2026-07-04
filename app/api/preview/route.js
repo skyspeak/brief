@@ -1,9 +1,9 @@
-// app/api/preview/route.js — design-iteration loop: render without sending.
-//   /api/preview?key=<CRON_SECRET>            → magazine HTML in browser
-//   /api/preview?key=<CRON_SECRET>&format=pdf → download the PDF
+// app/api/preview/route.js — preview digest without sending.
+//   /api/preview?key=<CRON_SECRET>            → digest HTML in browser
+//   /api/preview?key=<CRON_SECRET>&format=pdf → download PDF
 import { recentEmails } from "@/lib/db";
-import { buildIssue } from "@/lib/issue";
-import { renderMagazine } from "@/lib/magazine";
+import { buildDigest } from "@/lib/issue";
+import { markdownToEmailHtml } from "@/lib/markdown";
 import { htmlToPdf } from "@/lib/pdf";
 
 export const runtime = "nodejs";
@@ -13,19 +13,20 @@ export const maxDuration = 60;
 export async function GET(req) {
   const url = new URL(req.url);
 
-  // Guard so an open URL can't burn LLM calls.
   const secret = process.env.CRON_SECRET;
   if (secret && url.searchParams.get("key") !== secret) {
     return new Response("unauthorized", { status: 401 });
   }
 
   try {
-    const windowDays = Number(process.env.DIGEST_WINDOW_DAYS || 7);
+    const windowDays = Number(process.env.DIGEST_WINDOW_DAYS || process.env.DIGEST_INTERVAL_DAYS || 3);
     const since = Math.floor(Date.now() / 1000) - windowDays * 86400;
     const emails = await recentEmails(since);
     if (!emails.length) return new Response("No emails in window yet.");
 
-    const html = renderMagazine(await buildIssue(emails));
+    const persona = url.searchParams.get("persona") || "general";
+    const markdown = await buildDigest(emails, persona, windowDays);
+    const html = markdownToEmailHtml(markdown, `${persona} preview`);
 
     if (url.searchParams.get("format") === "pdf") {
       const pdf = await htmlToPdf(html);
