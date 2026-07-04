@@ -4,7 +4,7 @@ import { summarizeOne, summarizePending } from "@/lib/run-summarize";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60; // ~3 emails/batch with OpenRouter pacing
+export const maxDuration = 60; // one email per batch on Vercel hobby
 
 function authorized(body, req) {
   const secret = process.env.CRON_SECRET;
@@ -24,7 +24,7 @@ export async function POST(req) {
       const result = await summarizeOne(body.id, { force: !!body.force });
       return Response.json(result);
     }
-    return Response.json(await summarizePending({ limit: body.limit || 3 }));
+    return Response.json(await summarizePending({ limit: body.limit || 1 }));
   } catch (e) {
     return Response.json({ error: e.message }, { status: 500 });
   }

@@ -57,6 +57,8 @@ export default function NewslettersPage() {
       const d = parsed.data;
       if (!d) throw new Error(apiError(parsed, "summarize failed"));
       if (!r.ok) throw new Error(apiError(parsed, "summarize failed"));
+      const firstErr = d.results?.find((r) => r.error)?.error;
+      if ((d.summarized ?? 0) === 0 && firstErr) throw new Error(firstErr);
       await load();
     } catch (e) {
       setErr(e.message);
@@ -78,6 +80,8 @@ export default function NewslettersPage() {
       const d = parsed.data;
       if (!d) throw new Error(apiError(parsed, "summarize failed"));
       if (!r.ok) throw new Error(apiError(parsed, "summarize failed"));
+      const firstErr = d.results?.find((r) => r.error)?.error;
+      if ((d.summarized ?? 0) === 0 && firstErr) throw new Error(firstErr);
       await load();
     } catch (e) {
       setErr(e.message);

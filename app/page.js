@@ -57,8 +57,16 @@ export default function Home() {
       const d = parsed.data;
       if (!d) throw new Error(apiError(parsed, "summarize failed"));
       if (!r.ok) throw new Error(apiError(parsed, "summarize failed"));
-      const more = d.processed < (pendingCount ?? d.processed) ? " Click again if more are pending." : "";
-      setSummarizeMsg(`Summarized ${d.summarized ?? 0} of ${d.processed ?? 0} newsletters.${more}`);
+      const firstErr = d.results?.find((r) => r.error)?.error;
+      if ((d.summarized ?? 0) === 0 && firstErr) throw new Error(firstErr);
+      if (d.rate_limited) {
+        setSummarizeMsg(
+          `Summarized ${d.summarized ?? 0} of ${d.processed ?? 0}. OpenRouter rate limited — wait ~30s and click again.`
+        );
+      } else {
+        const more = (pendingCount ?? 0) > (d.summarized ?? 0) ? " Click again if more are pending." : "";
+        setSummarizeMsg(`Summarized ${d.summarized ?? 0} of ${d.processed ?? 0} newsletters.${more}`);
+      }
       await refreshPending();
     } catch (e) {
       setErr(e.message);
@@ -239,7 +247,7 @@ export default function Home() {
           </div>
           <p style={{ fontSize: 14, lineHeight: 1.5, margin: "0 0 12px", color: "#6b6356" }}>
             Run the map-step summarizer on newsletters that arrived without a summary.
-            Processes <strong>3 at a time</strong> to avoid timeouts and rate limits — click again if more remain.
+            Processes <strong>1 at a time</strong> to stay within Vercel&apos;s 60s limit — click again until pending hits 0.
             {pendingCount !== null && (
               <strong style={{ color: ink }}> {pendingCount} pending right now.</strong>
             )}
