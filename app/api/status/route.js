@@ -1,7 +1,7 @@
 // app/api/status/route.js — pipeline health: email counts + recent ingest state.
 //   /api/status?key=<CRON_SECRET>
 import { emailStatus, getLastDigestRun } from "@/lib/db";
-import { PROVIDER, resolveModel } from "@/lib/llm";
+import { llmEnvStatus, resolveModelFor, getProviderChain } from "@/lib/llm";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,22 +13,17 @@ function authorized(req) {
 }
 
 function envCheck() {
-  const llmOk =
-    PROVIDER === "openrouter"
-      ? !!(process.env.OPENROUTER_API_KEY && process.env.LLM_MODEL)
-      : PROVIDER === "gemini"
-        ? !!process.env.GEMINI_API_KEY
-        : PROVIDER === "claude"
-          ? !!process.env.ANTHROPIC_API_KEY
-          : false;
+  const llm = llmEnvStatus();
 
   return {
     turso: !!(process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN),
     resend_api: !!process.env.RESEND_API_KEY,
     resend_webhook: !!process.env.RESEND_WEBHOOK_SECRET,
-    llm_provider: PROVIDER,
+    llm_provider: llm.provider,
+    llm_fallback: llm.fallback,
+    llm_chain: llm.chain,
     llm_model: process.env.LLM_MODEL || null,
-    llm_ok: llmOk,
+    llm_ok: llm.ok,
     cron_secret: !!process.env.CRON_SECRET,
   };
 }
@@ -39,7 +34,7 @@ function pipelineHint(counts, env) {
   if (counts.with_body === 0)
     return "Emails stored but bodies empty — check RESEND_API_KEY and redeploy (webhook fetches body via Resend API).";
   if (counts.with_summary === 0)
-    return "Bodies stored but no summaries — check LLM_PROVIDER, OPENROUTER_API_KEY, and LLM_MODEL; see Vercel logs for [summarize] failed.";
+    return "Bodies stored but no summaries — check GEMINI_API_KEY (primary) and OPENROUTER_API_KEY (fallback); see Vercel logs for [llm] failed.";
   if (counts.with_summary < counts.total)
     return "Some emails lack summaries — older rows may predate the body-fetch fix; send a new test email.";
   return "Pipeline healthy — ask console should work.";
@@ -63,9 +58,9 @@ export async function GET(req) {
     const { counts, recent } = await emailStatus(10);
     let llm_model_resolved = null;
     try {
-      llm_model_resolved = resolveModel();
+      llm_model_resolved = resolveModelFor(getProviderChain()[0]);
     } catch {
-      /* LLM_MODEL missing for openrouter */
+      /* model resolution optional */
     }
 
     const intervalDays = Number(process.env.DIGEST_INTERVAL_DAYS || 3);
