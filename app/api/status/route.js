@@ -1,6 +1,6 @@
 // app/api/status/route.js — pipeline health: email counts + recent ingest state.
 //   /api/status?key=<CRON_SECRET>
-import { emailStatus } from "@/lib/db";
+import { emailStatus, getLastDigestRun } from "@/lib/db";
 import { PROVIDER, resolveModel } from "@/lib/llm";
 
 export const runtime = "nodejs";
@@ -68,11 +68,22 @@ export async function GET(req) {
       /* LLM_MODEL missing for openrouter */
     }
 
+    const intervalDays = Number(process.env.DIGEST_INTERVAL_DAYS || 3);
+    const lastDigest = await getLastDigestRun();
+    const nextDigest = lastDigest ? lastDigest + intervalDays * 86400 : null;
+
     return Response.json({
       ok: counts.with_summary > 0,
       env: { ...env, llm_model_resolved },
       counts,
       recent,
+      digest: {
+        interval_days: intervalDays,
+        window_days: Number(process.env.DIGEST_WINDOW_DAYS || intervalDays),
+        last_run_at: lastDigest,
+        next_run_at: nextDigest,
+        digest_to: process.env.DIGEST_TO || "skyspeak@gmail.com (persona default)",
+      },
       hint: pipelineHint(counts, env),
     });
   } catch (e) {
