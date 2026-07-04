@@ -7,8 +7,17 @@ const ink = "#1a1714";
 const accent = "#9a2515";
 const rule = "#c9bfae";
 
+const PERSONAS = [
+  { id: "general", label: "General Manager" },
+  { id: "sales", label: "Sales (CRO)" },
+  { id: "marketing", label: "Marketing (CMO)" },
+  { id: "engineering", label: "Engineering (CTO)" },
+  { id: "product", label: "Product (CPO)" },
+];
+
 export default function Home() {
   const [key, setKey] = useState("");
+  const [persona, setPersona] = useState("general");
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
   const [res, setRes] = useState(null);
@@ -23,7 +32,7 @@ export default function Home() {
       const r = await fetch("/api/ask", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ question: q, key }),
+        body: JSON.stringify({ question: q, key, persona }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "request failed");
@@ -72,7 +81,7 @@ export default function Home() {
           onKeyDown={(e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter") ask();
           }}
-          placeholder="e.g. What shifts in payer contracting should a healthcare seller watch this quarter?"
+          placeholder="e.g. What's relevant in business and AI this week?"
           rows={3}
           style={{
             width: "100%",
@@ -86,6 +95,41 @@ export default function Home() {
             resize: "vertical",
           }}
         />
+
+        <div style={{ marginTop: 10 }}>
+          <label
+            style={{
+              display: "block",
+              fontFamily: '"Helvetica Neue", Arial, sans-serif',
+              fontSize: 10,
+              letterSpacing: ".14em",
+              textTransform: "uppercase",
+              color: "#6b6356",
+              marginBottom: 4,
+            }}
+          >
+            Reader lens
+          </label>
+          <select
+            value={persona}
+            onChange={(e) => setPersona(e.target.value)}
+            style={{
+              width: "100%",
+              fontFamily: '"Helvetica Neue", Arial, sans-serif',
+              fontSize: 13,
+              padding: "9px 12px",
+              border: `1px solid ${rule}`,
+              background: "#fff",
+              color: ink,
+            }}
+          >
+            {PERSONAS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10 }}>
           <input
