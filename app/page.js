@@ -122,8 +122,11 @@ export default function Home() {
             {loading ? "Reading…" : "Ask"}
           </button>
         </div>
-        <div style={{ fontSize: 12, color: "#6b6356", marginTop: 6, fontFamily: '"Helvetica Neue", Arial, sans-serif' }}>
-          ⌘/Ctrl + Enter to submit
+        <div style={{ fontSize: 13, color: "#6b6356", marginTop: 6, fontFamily: '"Helvetica Neue", Arial, sans-serif' }}>
+          ⌘/Ctrl + Enter to submit ·{" "}
+          <a href="/confirm" style={{ color: accent }}>
+            Confirm subscriptions
+          </a>
         </div>
 
         {err && (
