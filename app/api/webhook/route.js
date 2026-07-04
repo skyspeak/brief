@@ -3,22 +3,12 @@ import { Webhook } from "svix";
 import { insertEmail, updateSummary } from "@/lib/db";
 import { fetchReceivedEmail } from "@/lib/resend";
 import { summarizeEmail } from "@/lib/summarize";
+import { htmlToText } from "@/lib/html";
+import { isConfirmationEmail } from "@/lib/confirmations";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 30; // includes one summarization LLM call
-
-const htmlToText = (h = "") =>
-  h
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<\/(p|div|tr|li|h[1-6])>/gi, "\n")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\n\s*\n\s*\n/g, "\n\n")
-    .replace(/[ \t]+/g, " ")
-    .trim();
+export const maxDuration = 30;
 
 export async function POST(req) {
   try {
@@ -49,15 +39,16 @@ export async function POST(req) {
 
       const x = evt.data;
       const id = x?.email_id || x?.id || crypto.randomUUID();
-      let body = x?.text || htmlToText(x?.html);
+      let bodyHtml = x?.html || "";
+      let body = x?.text || htmlToText(bodyHtml);
       let subject = x?.subject || "";
       let sender = x?.from;
 
-      // Resend webhooks are metadata-only — fetch body via Receiving API.
       if (id && process.env.RESEND_API_KEY) {
         try {
           const full = await fetchReceivedEmail(id);
-          body = full.text || htmlToText(full.html) || body;
+          bodyHtml = full.html || bodyHtml;
+          body = full.text || htmlToText(bodyHtml) || body;
           subject = full.subject || subject;
           sender = full.from || sender;
         } catch (e) {
@@ -70,10 +61,14 @@ export async function POST(req) {
         sender,
         subject,
         body_text: body,
+        body_html: bodyHtml || null,
         received_at: Math.floor(Date.now() / 1000),
       });
 
-      if (body && body.length > 120) {
+      const isConfirm = isConfirmationEmail({ subject, body_text: body, body_html: bodyHtml });
+
+      // Skip LLM map step for confirmation emails — not newsletter content.
+      if (!isConfirm && body && body.length > 120) {
         try {
           const { summary, tags } = await summarizeEmail({ subject, sender, body });
           await updateSummary(id, summary, tags);
