@@ -22,9 +22,9 @@ export default function Home() {
   const [persona, setPersona] = useState("neutral");
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
-  const [summarizing, setSummarizing] = useState(false);
+  const [briefing, setBriefing] = useState(false);
+  const [progress, setProgress] = useState("");
   const [pendingCount, setPendingCount] = useState(null);
-  const [summarizeMsg, setSummarizeMsg] = useState("");
   const [res, setRes] = useState(null);
   const [err, setErr] = useState("");
 
@@ -39,39 +39,81 @@ export default function Home() {
     }
   }
 
-  async function summarizePending() {
+  async function generateBriefing() {
     if (!key.trim()) {
       setErr("Enter your access key first");
       return;
     }
     setErr("");
-    setSummarizeMsg("");
-    setSummarizing(true);
+    setRes(null);
+    setProgress("");
+    setBriefing(true);
+
     try {
-      const r = await fetch("/api/summarize", {
+      setProgress("Cleaning HTML on all newsletters…");
+      const cleanRes = await fetch("/api/clean", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ key }),
       });
-      const parsed = await parseApiResponse(r);
-      const d = parsed.data;
-      if (!d) throw new Error(apiError(parsed, "summarize failed"));
-      if (!r.ok) throw new Error(apiError(parsed, "summarize failed"));
-      const firstErr = d.results?.find((r) => r.error)?.error;
-      if ((d.summarized ?? 0) === 0 && firstErr) throw new Error(firstErr);
-      if (d.rate_limited) {
-        setSummarizeMsg(
-          `Summarized ${d.summarized ?? 0} of ${d.processed ?? 0}. OpenRouter rate limited — wait ~30s and click again.`
-        );
-      } else {
-        const more = (pendingCount ?? 0) > (d.summarized ?? 0) ? " Click again if more are pending." : "";
-        setSummarizeMsg(`Summarized ${d.summarized ?? 0} of ${d.processed ?? 0} newsletters.${more}`);
+      const cleanParsed = await parseApiResponse(cleanRes);
+      if (!cleanRes.ok) throw new Error(apiError(cleanParsed, "clean failed"));
+
+      let extracted = 0;
+      for (let guard = 0; guard < 200; guard++) {
+        setProgress(`Extracting facts from newsletters… (${extracted} done)`);
+        const sumRes = await fetch("/api/summarize", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ key, limit: 1 }),
+        });
+        const sumParsed = await parseApiResponse(sumRes);
+        const d = sumParsed.data;
+        if (!d) throw new Error(apiError(sumParsed, "summarize failed"));
+        if (!sumRes.ok) throw new Error(apiError(sumParsed, "summarize failed"));
+
+        if ((d.processed ?? 0) === 0 || (d.remaining ?? 0) === 0) break;
+
+        extracted += d.summarized ?? 0;
+        const firstErr = d.results?.find((r) => r.error)?.error;
+        if ((d.summarized ?? 0) === 0 && firstErr) {
+          if (d.rate_limited) {
+            setProgress("Rate limited — waiting 15s…");
+            await new Promise((r) => setTimeout(r, 15000));
+            continue;
+          }
+          throw new Error(firstErr);
+        }
+        if (d.rate_limited) {
+          setProgress("Rate limited — waiting 15s…");
+          await new Promise((r) => setTimeout(r, 15000));
+        }
       }
+
+      setProgress(`Synthesizing briefing across all newsletters (${persona} lens)…`);
+      const briefRes = await fetch("/api/briefing", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ key, persona, clean: false }),
+      });
+      const briefParsed = await parseApiResponse(briefRes);
+      const b = briefParsed.data;
+      if (!b) throw new Error(apiError(briefParsed, "briefing failed"));
+      if (!briefRes.ok) throw new Error(apiError(briefParsed, "briefing failed"));
+
+      setRes({
+        answer: b.markdown,
+        sources: b.sources,
+        persona: b.persona,
+        source_count: b.source_count,
+      });
+      setProgress(`Done — ${b.source_count} newsletters → Top 3 Themes, Stories, Emerging, Follow-Ups.`);
       await refreshPending();
     } catch (e) {
       setErr(e.message);
+      setProgress("");
     } finally {
-      setSummarizing(false);
+      setBriefing(false);
     }
   }
 
@@ -207,7 +249,7 @@ export default function Home() {
           />
           <button
             onClick={ask}
-            disabled={loading}
+            disabled={loading || briefing}
             style={{
               fontFamily: '"Helvetica Neue", Arial, sans-serif',
               fontSize: 13,
@@ -216,9 +258,9 @@ export default function Home() {
               textTransform: "uppercase",
               padding: "10px 22px",
               border: "none",
-              background: loading ? "#b9a99f" : accent,
+              background: loading || briefing ? "#b9a99f" : accent,
               color: "#fff",
-              cursor: loading ? "default" : "pointer",
+              cursor: loading || briefing ? "default" : "pointer",
             }}
           >
             {loading ? "Reading…" : "Ask"}
@@ -243,18 +285,18 @@ export default function Home() {
               marginBottom: 8,
             }}
           >
-            Ingest
+            Ingest & Brief
           </div>
           <p style={{ fontSize: 14, lineHeight: 1.5, margin: "0 0 12px", color: "#6b6356" }}>
-            Run the map-step summarizer on newsletters that arrived without a summary.
-            Processes <strong>1 at a time</strong> to stay within Vercel&apos;s 60s limit — click again until pending hits 0.
-            {pendingCount !== null && (
-              <strong style={{ color: ink }}> {pendingCount} pending right now.</strong>
+            Cleans HTML on <strong>all</strong> newsletters, extracts per-issue facts, then synthesizes one
+            briefing: <strong>Top 3 Themes · 3 Notable Stories · 3 Emerging Themes · 3 Follow-Ups</strong> (your digest prompt).
+            {pendingCount !== null && pendingCount > 0 && (
+              <strong style={{ color: ink }}> {pendingCount} still need extraction.</strong>
             )}
           </p>
           <button
-            onClick={summarizePending}
-            disabled={summarizing || !key.trim()}
+            onClick={generateBriefing}
+            disabled={briefing || !key.trim()}
             style={{
               fontFamily: '"Helvetica Neue", Arial, sans-serif',
               fontSize: 13,
@@ -263,15 +305,15 @@ export default function Home() {
               textTransform: "uppercase",
               padding: "12px 24px",
               border: "none",
-              background: summarizing || !key.trim() ? "#b9a99f" : ink,
+              background: briefing || !key.trim() ? "#b9a99f" : ink,
               color: "#fff",
-              cursor: summarizing || !key.trim() ? "default" : "pointer",
+              cursor: briefing || !key.trim() ? "default" : "pointer",
             }}
           >
-            {summarizing ? "Summarizing…" : "Summarize this"}
+            {briefing ? "Working…" : "Generate briefing (all newsletters)"}
           </button>
-          {summarizeMsg && (
-            <div style={{ marginTop: 10, fontSize: 14, color: "#3f7d3f" }}>{summarizeMsg}</div>
+          {progress && (
+            <div style={{ marginTop: 10, fontSize: 14, color: "#3f7d3f" }}>{progress}</div>
           )}
         </section>
 

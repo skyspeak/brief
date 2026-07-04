@@ -1,10 +1,9 @@
-// app/api/summarize/route.js — ad-hoc map-step: one email or all pending.
-//   POST { key, id? }  — id = single email; omit = all unsummarized
-import { summarizeOne, summarizePending } from "@/lib/run-summarize";
+// app/api/clean/route.js — re-clean all stored newsletter bodies from HTML.
+import { cleanAllBodies } from "@/lib/clean-bodies";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60; // one email per batch on Vercel hobby
+export const maxDuration = 60;
 
 function authorized(body, req) {
   const secret = process.env.CRON_SECRET;
@@ -20,13 +19,7 @@ export async function POST(req) {
   }
 
   try {
-    if (body.id) {
-      const result = await summarizeOne(body.id, { force: !!body.force });
-      return Response.json(result);
-    }
-    return Response.json(
-      await summarizePending({ limit: body.limit || 1, force: !!body.force })
-    );
+    return Response.json(await cleanAllBodies());
   } catch (e) {
     return Response.json({ error: e.message }, { status: 500 });
   }

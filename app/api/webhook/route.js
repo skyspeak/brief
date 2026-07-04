@@ -4,6 +4,7 @@ import { insertEmail, updateSummary } from "@/lib/db";
 import { fetchReceivedEmail } from "@/lib/resend";
 import { summarizeEmail } from "@/lib/summarize";
 import { htmlToText } from "@/lib/html";
+import { cleanNewsletterContent } from "@/lib/newsletter-text";
 import { isConfirmationEmail } from "@/lib/confirmations";
 
 export const runtime = "nodejs";
@@ -48,7 +49,12 @@ export async function POST(req) {
         try {
           const full = await fetchReceivedEmail(id);
           bodyHtml = full.html || bodyHtml;
-          body = full.text || htmlToText(bodyHtml) || body;
+          const plain = full.text || htmlToText(bodyHtml) || body;
+          body = cleanNewsletterContent(plain, {
+            body_html: bodyHtml,
+            subject,
+            sender,
+          }) || body;
           subject = full.subject || subject;
           sender = full.from || sender;
         } catch (e) {
