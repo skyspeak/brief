@@ -5,7 +5,7 @@ and periodically distills them into **one tailored digest per persona** emailed 
 Plus an on-demand **briefing console** and ask-over-corpus. Deploys to Vercel.
 
 ```
-Gmail inbox ──▶ /api/sync (hourly cron) ──▶ Turso
+Gmail inbox ──▶ /api/sync (daily cron) ──▶ Turso
                       │ store raw, summarize + tag
                       ▼
 Vercel Cron ──▶ /api/digest ──▶ buildDigest (LLM) ──▶ Gmail send
@@ -54,7 +54,7 @@ Edit `lib/personas.js` — each entry is `{ id, label, personaKey, to?, digest? 
 
 | Schedule | Route | Purpose |
 |----------|-------|---------|
-| Hourly | `/api/sync` | Pull new Gmail messages |
+| Daily 06:00 UTC | `/api/sync` | Pull new Gmail messages |
 | Daily 07:00 UTC | `/api/digest` | Send digest if interval elapsed |
 
 Requires `CRON_SECRET` in Vercel (sent as Bearer token on cron invocations).
