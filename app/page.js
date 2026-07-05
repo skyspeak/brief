@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { parseApiResponse, apiError } from "@/lib/parse-api-response";
 import { useAccessKey } from "./components/useAccessKey";
@@ -185,6 +186,16 @@ export default function Home() {
           watch next.
         </p>
       </header>
+
+      <div className="card">
+        <h2 className="card-title">Connect Gmail first</h2>
+        <p className="field-hint" style={{ marginTop: 0 }}>
+          One-time setup — connect your inbox so we can sync newsletters and send digests.
+        </p>
+        <Link href="/confirm" className="btn btn-primary btn-block">
+          Open Setup
+        </Link>
+      </div>
 
       <div className="card">
         <h2 className="card-title">How it works</h2>
