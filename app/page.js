@@ -2,14 +2,11 @@
 
 import { useState } from "react";
 import { parseApiResponse, apiError } from "@/lib/parse-api-response";
-
-const paper = "#faf7f0";
-const ink = "#1a1714";
-const accent = "#9a2515";
-const rule = "#c9bfae";
+import { useAccessKey } from "./components/useAccessKey";
+import AccessKeyField from "./components/AccessKeyField";
 
 const PERSONAS = [
-  { id: "neutral", label: "Neutral (no persona)" },
+  { id: "neutral", label: "Neutral — balanced overview" },
   { id: "general", label: "General Manager" },
   { id: "sales", label: "Sales (CRO)" },
   { id: "marketing", label: "Marketing (CMO)" },
@@ -18,7 +15,7 @@ const PERSONAS = [
 ];
 
 export default function Home() {
-  const [key, setKey] = useState("");
+  const { key, setKey } = useAccessKey();
   const [persona, setPersona] = useState("neutral");
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,6 +24,7 @@ export default function Home() {
   const [pendingCount, setPendingCount] = useState(null);
   const [res, setRes] = useState(null);
   const [err, setErr] = useState("");
+  const [showAsk, setShowAsk] = useState(false);
 
   async function refreshPending() {
     if (!key.trim()) return;
@@ -39,27 +37,29 @@ export default function Home() {
     }
   }
 
-  async function generateBriefing() {
+  function requireKey() {
     if (!key.trim()) {
-      setErr("Enter your access key (CRON_SECRET) in the field above, then try again.");
-      return;
+      setErr("Add your access key below first — it's the same as CRON_SECRET in Vercel.");
+      return false;
     }
+    return true;
+  }
+
+  async function generateBriefing() {
+    if (!requireKey()) return;
     setErr("");
     setRes(null);
     setProgress("Starting…");
     setBriefing(true);
 
     try {
-      setProgress("Cleaning HTML on all newsletters…");
+      setProgress("Cleaning newsletter HTML…");
       const cleanRes = await fetch("/api/clean", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ key }),
       });
       const cleanParsed = await parseApiResponse(cleanRes);
-      if (!cleanParsed.data && !cleanRes.ok) {
-        throw new Error(apiError(cleanParsed, "clean failed"));
-      }
       if (!cleanRes.ok) throw new Error(apiError(cleanParsed, "clean failed"));
 
       let extracted = 0;
@@ -78,8 +78,8 @@ export default function Home() {
         const remaining = d.remaining ?? 0;
         setProgress(
           remaining > 0
-            ? `Extracting facts… ${extracted} done, ${remaining} remaining`
-            : `Extracting facts… ${extracted} done`
+            ? `Reading newsletters… ${extracted} done, ${remaining} left`
+            : `Reading newsletters… ${extracted} done`
         );
 
         if (remaining === 0) break;
@@ -91,23 +91,23 @@ export default function Home() {
           stalls++;
           const firstErr = d.results?.find((r) => r.error)?.error;
           if (firstErr && d.rate_limited) {
-            setProgress("Rate limited — waiting 15s…");
+            setProgress("Rate limited — pausing 15 seconds…");
             await new Promise((r) => setTimeout(r, 15000));
             continue;
           }
           if (firstErr) throw new Error(firstErr);
           if (stalls >= 5) {
-            throw new Error("Stuck — no progress after several attempts. Check GEMINI_API_KEY in Vercel.");
+            throw new Error("Stuck — check GEMINI_API_KEY in Vercel, then try again.");
           }
         }
 
         if (d.rate_limited) {
-          setProgress("Rate limited — waiting 15s…");
+          setProgress("Rate limited — pausing 15 seconds…");
           await new Promise((r) => setTimeout(r, 15000));
         }
       }
 
-      setProgress(`Synthesizing briefing across all newsletters (${persona} lens)…`);
+      setProgress("Writing your briefing…");
       const briefRes = await fetch("/api/briefing", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -124,7 +124,7 @@ export default function Home() {
         persona: b.persona,
         source_count: b.source_count,
       });
-      setProgress(`Done — ${b.source_count} newsletters → Top 3 Themes, Stories, Emerging, Follow-Ups.`);
+      setProgress("");
       await refreshPending();
     } catch (e) {
       setErr(e.message);
@@ -136,6 +136,7 @@ export default function Home() {
 
   async function ask() {
     if (!q.trim()) return;
+    if (!requireKey()) return;
     setErr("");
     setRes(null);
     setLoading(true);
@@ -158,83 +159,45 @@ export default function Home() {
   }
 
   return (
-    <main
-      style={{
-        background: paper,
-        color: ink,
-        minHeight: "100vh",
-        fontFamily: 'Georgia, "Times New Roman", serif',
-        padding: "48px 20px",
-      }}
-    >
-      <div style={{ maxWidth: 720, margin: "0 auto" }}>
-        <header style={{ borderBottom: `3px double ${ink}`, paddingBottom: 10, marginBottom: 22 }}>
-          <div
-            style={{
-              fontFamily: '"Helvetica Neue", Arial, sans-serif',
-              fontSize: 11,
-              letterSpacing: ".18em",
-              textTransform: "uppercase",
-              color: "#6b6356",
-            }}
-          >
-            Ask the corpus
-          </div>
-          <h1 style={{ fontFamily: '"Helvetica Neue", Arial, sans-serif', fontSize: 40, margin: "4px 0 0", letterSpacing: ".04em" }}>
-            THE BRIEF
-          </h1>
-          <div style={{ fontStyle: "italic", color: accent, fontSize: 14, marginTop: 4 }}>
-            What's relevant in your industry, on demand
-          </div>
-        </header>
+    <>
+      <header className="page-header">
+        <h1 className="page-title">Your briefing, ready when you are</h1>
+        <p className="page-subtitle">
+          Turn every newsletter in your inbox into one clear digest — top themes, stories, and what to
+          watch next.
+        </p>
+      </header>
 
-        <textarea
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") ask();
-          }}
-          placeholder="e.g. What's relevant in business and AI this week?"
-          rows={3}
-          style={{
-            width: "100%",
-            boxSizing: "border-box",
-            fontFamily: "inherit",
-            fontSize: 16,
-            padding: 12,
-            border: `1px solid ${rule}`,
-            background: "#fff",
-            color: ink,
-            resize: "vertical",
-          }}
-        />
+      <div className="card">
+        <h2 className="card-title">How it works</h2>
+        <ol className="steps">
+          <li className="step">
+            <span className="step-num">1</span>
+            <span>Forward newsletters to your inbound address (set up on Subscribe)</span>
+          </li>
+          <li className="step">
+            <span className="step-num">2</span>
+            <span>Tap Generate briefing — we clean, read, and synthesize everything</span>
+          </li>
+          <li className="step">
+            <span className="step-num">3</span>
+            <span>Get Top 3 Themes, 3 Stories, 3 Emerging signals, and 3 Follow-ups</span>
+          </li>
+        </ol>
+      </div>
 
-        <div style={{ marginTop: 10 }}>
-          <label
-            style={{
-              display: "block",
-              fontFamily: '"Helvetica Neue", Arial, sans-serif',
-              fontSize: 10,
-              letterSpacing: ".14em",
-              textTransform: "uppercase",
-              color: "#6b6356",
-              marginBottom: 4,
-            }}
-          >
-            Reader lens
+      <div className="card">
+        <AccessKeyField value={key} onChange={setKey} onBlur={refreshPending} />
+
+        <div className="field">
+          <label className="field-label" htmlFor="persona">
+            Who is this for?
           </label>
           <select
+            id="persona"
+            className="select"
             value={persona}
             onChange={(e) => setPersona(e.target.value)}
-            style={{
-              width: "100%",
-              fontFamily: '"Helvetica Neue", Arial, sans-serif',
-              fontSize: 13,
-              padding: "9px 12px",
-              border: `1px solid ${rule}`,
-              background: "#fff",
-              color: ink,
-            }}
           >
             {PERSONAS.map((p) => (
               <option key={p.id} value={p.id}>
@@ -242,163 +205,96 @@ export default function Home() {
               </option>
             ))}
           </select>
+          <span className="field-hint">Filters the briefing to what matters for that role.</span>
         </div>
 
-        <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10 }}>
-          <input
-            type="password"
-            value={key}
-            onChange={(e) => {
-              setKey(e.target.value);
-              setPendingCount(null);
-            }}
-            onBlur={refreshPending}
-            placeholder="access key (CRON_SECRET)"
-            style={{
-              flex: 1,
-              fontFamily: '"Helvetica Neue", Arial, sans-serif',
-              fontSize: 13,
-              padding: "9px 12px",
-              border: `1px solid ${rule}`,
-              background: "#fff",
-              color: ink,
-            }}
-          />
-          <button
-            onClick={ask}
-            disabled={loading || briefing}
-            style={{
-              fontFamily: '"Helvetica Neue", Arial, sans-serif',
-              fontSize: 13,
-              fontWeight: 700,
-              letterSpacing: ".08em",
-              textTransform: "uppercase",
-              padding: "10px 22px",
-              border: "none",
-              background: loading || briefing ? "#b9a99f" : accent,
-              color: "#fff",
-              cursor: loading || briefing ? "default" : "pointer",
-            }}
-          >
-            {loading ? "Reading…" : "Ask"}
-          </button>
-        </div>
-
-        <section
-          style={{
-            marginTop: 20,
-            padding: 16,
-            border: `2px solid ${ink}`,
-            background: "#fff",
-          }}
-        >
-          <div
-            style={{
-              fontFamily: '"Helvetica Neue", Arial, sans-serif',
-              fontSize: 10,
-              letterSpacing: ".16em",
-              textTransform: "uppercase",
-              color: "#6b6356",
-              marginBottom: 8,
-            }}
-          >
-            Ingest & Brief
-          </div>
-          <p style={{ fontSize: 14, lineHeight: 1.5, margin: "0 0 12px", color: "#6b6356" }}>
-            Cleans HTML on <strong>all</strong> newsletters, extracts per-issue facts, then synthesizes one
-            briefing: <strong>Top 3 Themes · 3 Notable Stories · 3 Emerging Themes · 3 Follow-Ups</strong> (your digest prompt).
-            {pendingCount !== null && pendingCount > 0 && (
-              <strong style={{ color: ink }}> {pendingCount} still need extraction.</strong>
-            )}
-          </p>
-          <button
-            type="button"
-            onClick={generateBriefing}
-            disabled={briefing}
-            style={{
-              fontFamily: '"Helvetica Neue", Arial, sans-serif',
-              fontSize: 13,
-              fontWeight: 700,
-              letterSpacing: ".08em",
-              textTransform: "uppercase",
-              padding: "12px 24px",
-              border: "none",
-              background: briefing ? "#b9a99f" : ink,
-              color: "#fff",
-              cursor: briefing ? "default" : "pointer",
-            }}
-          >
-            {briefing ? "Working…" : "Generate briefing (all newsletters)"}
-          </button>
-          {!key.trim() && (
-            <div style={{ marginTop: 8, fontSize: 13, color: accent }}>
-              Enter your access key above to run this.
-            </div>
-          )}
-          {progress && (
-            <div style={{ marginTop: 10, fontSize: 14, color: "#3f7d3f" }}>{progress}</div>
-          )}
-        </section>
-
-        <div style={{ fontSize: 13, color: "#6b6356", marginTop: 12, fontFamily: '"Helvetica Neue", Arial, sans-serif' }}>
-          ⌘/Ctrl + Enter to submit ·{" "}
-          <a href="/newsletters" style={{ color: accent }}>
-            Browse newsletters
-          </a>
-          {" · "}
-          <a href="/confirm" style={{ color: accent }}>
-            Confirm subscriptions
-          </a>
-        </div>
-
-        {err && (
-          <div style={{ marginTop: 20, color: accent, fontFamily: '"Helvetica Neue", Arial, sans-serif', fontSize: 14 }}>
-            {err}
+        {pendingCount !== null && pendingCount > 0 && (
+          <div className="alert alert-info">
+            {pendingCount} newsletter{pendingCount === 1 ? "" : "s"} still need to be read — briefing
+            will process them automatically.
           </div>
         )}
 
-        {res && (
-          <article style={{ marginTop: 28 }}>
-            <div
-              style={{
-                fontSize: 16.5,
-                lineHeight: 1.65,
-                whiteSpace: "pre-wrap",
-                borderTop: `2px solid ${ink}`,
-                paddingTop: 16,
-              }}
-            >
-              {res.answer}
-            </div>
+        <button
+          type="button"
+          className="btn btn-primary btn-block"
+          onClick={generateBriefing}
+          disabled={briefing}
+        >
+          {briefing ? (
+            <>
+              <span className="spinner" aria-hidden /> Working…
+            </>
+          ) : (
+            "Generate briefing"
+          )}
+        </button>
 
-            {res.sources?.length > 0 && (
-              <section style={{ marginTop: 24 }}>
-                <div
-                  style={{
-                    fontFamily: '"Helvetica Neue", Arial, sans-serif',
-                    fontSize: 10,
-                    letterSpacing: ".16em",
-                    textTransform: "uppercase",
-                    color: "#6b6356",
-                    borderBottom: `1px solid ${rule}`,
-                    paddingBottom: 4,
-                    marginBottom: 8,
-                  }}
-                >
-                  Sources
-                </div>
-                <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13.5, lineHeight: 1.5 }}>
-                  {res.sources.map((s) => (
-                    <li key={s.n}>
-                      {s.subject} <em style={{ color: "#6b6356" }}>— {s.sender}</em>
-                    </li>
-                  ))}
-                </ol>
-              </section>
-            )}
-          </article>
+        {progress && <div className="alert alert-info" style={{ marginTop: "1rem", marginBottom: 0 }}>{progress}</div>}
+      </div>
+
+      <div className="card">
+        <button
+          type="button"
+          className="btn btn-secondary btn-block"
+          onClick={() => setShowAsk(!showAsk)}
+          aria-expanded={showAsk}
+        >
+          {showAsk ? "Hide ask a question" : "Ask a specific question instead"}
+        </button>
+
+        {showAsk && (
+          <div style={{ marginTop: "1rem" }}>
+            <div className="field">
+              <label className="field-label" htmlFor="question">
+                Your question
+              </label>
+              <textarea
+                id="question"
+                className="textarea"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="e.g. What should a GM know about AI infrastructure this week?"
+                rows={3}
+              />
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary btn-block"
+              onClick={ask}
+              disabled={loading || briefing || !q.trim()}
+            >
+              {loading ? "Thinking…" : "Ask"}
+            </button>
+          </div>
         )}
       </div>
-    </main>
+
+      {err && <div className="alert alert-error">{err}</div>}
+
+      {res && (
+        <div className="result">
+          {res.source_count && (
+            <div className="alert alert-success" style={{ marginBottom: "1rem" }}>
+              Briefing from {res.source_count} newsletter{res.source_count === 1 ? "" : "s"}
+            </div>
+          )}
+          <div className="result-body">{res.answer}</div>
+          {res.sources?.length > 0 && (
+            <div className="result-sources">
+              <h3>Sources</h3>
+              <ol>
+                {res.sources.map((s) => (
+                  <li key={s.n}>
+                    {s.subject}
+                    {s.sender && <span> — {s.sender}</span>}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+        </div>
+      )}
+    </>
   );
 }

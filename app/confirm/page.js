@@ -1,14 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { parseApiResponse, apiError } from "@/lib/parse-api-response";
-
-const paper = "#faf7f0";
-const ink = "#1a1714";
-const accent = "#9a2515";
-const rule = "#c9bfae";
-const muted = "#6b6356";
-const green = "#3f7d3f";
+import { useAccessKey } from "../components/useAccessKey";
+import AccessKeyField from "../components/AccessKeyField";
 
 function fmtTime(unix) {
   if (!unix) return "";
@@ -20,6 +16,7 @@ function fmtTime(unix) {
 
 function ConfirmCard({ c, keyVal, onConfirmed }) {
   const [marking, setMarking] = useState(false);
+  const done = c.status === "confirmed";
 
   async function markDone() {
     setMarking(true);
@@ -35,131 +32,74 @@ function ConfirmCard({ c, keyVal, onConfirmed }) {
     }
   }
 
-  const done = c.status === "confirmed";
-
   return (
-    <article
-      style={{
-        border: `1px solid ${done ? green : rule}`,
-        background: done ? "#f6faf6" : "#fff",
-        padding: 16,
-        marginBottom: 14,
-        opacity: done ? 0.85 : 1,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: 12,
-          marginBottom: 6,
-        }}
-      >
-        <div
-          style={{
-            fontFamily: '"Helvetica Neue", Arial, sans-serif',
-            fontSize: 10,
-            letterSpacing: ".14em",
-            textTransform: "uppercase",
-            color: muted,
-          }}
-        >
-          {fmtTime(c.received_at)} · {c.sender}
-        </div>
+    <article className={`confirm-card${done ? " done" : ""}`}>
+      <div className="nl-meta">
+        {fmtTime(c.received_at)}
+        {c.sender && ` · ${c.sender}`}
         {done && (
-          <span
-            style={{
-              fontFamily: '"Helvetica Neue", Arial, sans-serif',
-              fontSize: 10,
-              fontWeight: 700,
-              color: green,
-              letterSpacing: ".08em",
-              textTransform: "uppercase",
-            }}
-          >
-            ✓ Confirmed
+          <span className="badge badge-ready" style={{ marginLeft: "0.5rem" }}>
+            Confirmed
           </span>
         )}
       </div>
 
-      <h2 style={{ fontSize: 18, margin: "0 0 8px", lineHeight: 1.25 }}>{c.subject}</h2>
+      <h2 className="nl-title">{c.subject}</h2>
 
       {c.snippet && (
-        <p style={{ fontSize: 13, color: muted, lineHeight: 1.5, margin: "0 0 12px", fontStyle: "italic" }}>
+        <p style={{ margin: "0 0 0.75rem", fontSize: "0.875rem", color: "var(--text-secondary)" }}>
           {c.snippet}
         </p>
       )}
 
       {!done && c.primaryLink && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+        <div className="confirm-actions">
           <a
             href={c.primaryLink}
             target="_blank"
             rel="noopener noreferrer"
+            className="btn btn-primary"
             onClick={() => {
               fetch("/api/confirmations", {
                 method: "POST",
                 headers: { "content-type": "application/json" },
                 body: JSON.stringify({ key: keyVal, id: c.id }),
-              }).then(() => onConfirmed()).catch(() => {});
-            }}
-            style={{
-              display: "inline-block",
-              fontFamily: '"Helvetica Neue", Arial, sans-serif',
-              fontSize: 13,
-              fontWeight: 700,
-              letterSpacing: ".06em",
-              textTransform: "uppercase",
-              padding: "10px 20px",
-              border: "none",
-              background: accent,
-              color: "#fff",
-              textDecoration: "none",
+              })
+                .then(() => onConfirmed())
+                .catch(() => {});
             }}
           >
-            {c.primaryLabel || "Confirm subscription"} ↗
+            Confirm subscription ↗
           </a>
           <button
-            onClick={() => markDone()}
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={markDone}
             disabled={marking}
-            style={{
-              fontFamily: '"Helvetica Neue", Arial, sans-serif',
-              fontSize: 12,
-              padding: "10px 14px",
-              border: `1px solid ${rule}`,
-              background: "#fff",
-              color: muted,
-              cursor: marking ? "default" : "pointer",
-            }}
           >
-            Mark done
+            {marking ? "…" : "Mark done"}
           </button>
         </div>
       )}
 
       {!done && !c.primaryLink && (
-        <div style={{ color: accent, fontSize: 14, marginBottom: 10 }}>
-          Confirmation detected but no link found — try expanding other links below or re-send the
-          signup email.
+        <div className="alert alert-warning" style={{ marginBottom: 0 }}>
+          We found a confirmation email but no link — try the links below or re-send the signup email.
         </div>
       )}
 
       {c.linkDetails?.length > 0 && (
-        <details style={{ fontSize: 13, marginTop: 4 }}>
-          <summary style={{ cursor: "pointer", color: muted }}>
-            {c.linkDetails.length} link{c.linkDetails.length > 1 ? "s" : ""} extracted
+        <details style={{ marginTop: "0.75rem", fontSize: "0.875rem" }}>
+          <summary style={{ cursor: "pointer", color: "var(--text-muted)" }}>
+            {c.linkDetails.length} link{c.linkDetails.length > 1 ? "s" : ""} found
           </summary>
-          <ul style={{ margin: "8px 0 0", paddingLeft: 18, lineHeight: 1.6 }}>
+          <ul style={{ margin: "0.5rem 0 0", paddingLeft: "1.25rem", lineHeight: 1.6 }}>
             {c.linkDetails.map((l) => (
-              <li key={l.url} style={{ marginBottom: 6 }}>
-                {l.label && (
-                  <span style={{ fontWeight: 700, display: "block", fontSize: 12 }}>{l.label}</span>
-                )}
-                <a href={l.url} target="_blank" rel="noopener noreferrer" style={{ color: accent, wordBreak: "break-all" }}>
-                  {l.url.length > 80 ? l.url.slice(0, 80) + "…" : l.url}
+              <li key={l.url} style={{ marginBottom: "0.5rem" }}>
+                {l.label && <strong style={{ display: "block", fontSize: "0.8125rem" }}>{l.label}</strong>}
+                <a href={l.url} target="_blank" rel="noopener noreferrer" style={{ wordBreak: "break-all" }}>
+                  {l.url.length > 72 ? l.url.slice(0, 72) + "…" : l.url}
                 </a>
-                <span style={{ color: muted, fontSize: 11 }}> ({l.source})</span>
               </li>
             ))}
           </ul>
@@ -170,7 +110,7 @@ function ConfirmCard({ c, keyVal, onConfirmed }) {
 }
 
 export default function ConfirmPage() {
-  const [key, setKey] = useState("");
+  const { key, setKey } = useAccessKey();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
@@ -178,7 +118,10 @@ export default function ConfirmPage() {
   const [copied, setCopied] = useState(false);
 
   const load = useCallback(async () => {
-    if (!key.trim()) return;
+    if (!key.trim()) {
+      setErr("Add your access key to load confirmations.");
+      return;
+    }
     setErr("");
     setLoading(true);
     try {
@@ -213,245 +156,118 @@ export default function ConfirmPage() {
   const manual = (data?.confirmations || []).filter((c) => c.status === "manual");
 
   return (
-    <main
-      style={{
-        background: paper,
-        color: ink,
-        minHeight: "100vh",
-        fontFamily: 'Georgia, "Times New Roman", serif',
-        padding: "48px 20px",
-      }}
-    >
-      <div style={{ maxWidth: 720, margin: "0 auto" }}>
-        <header style={{ borderBottom: `3px double ${ink}`, paddingBottom: 10, marginBottom: 22 }}>
-          <div
-            style={{
-              fontFamily: '"Helvetica Neue", Arial, sans-serif',
-              fontSize: 11,
-              letterSpacing: ".18em",
-              textTransform: "uppercase",
-              color: muted,
-            }}
-          >
-            Newsletter subscriptions
-          </div>
-          <h1
-            style={{
-              fontFamily: '"Helvetica Neue", Arial, sans-serif',
-              fontSize: 40,
-              margin: "4px 0 0",
-              letterSpacing: ".04em",
-            }}
-          >
-            CONFIRM
-          </h1>
-          <div style={{ fontStyle: "italic", color: accent, fontSize: 14, marginTop: 4 }}>
-            Complete double opt-in — no Gmail forwarding needed
-          </div>
-        </header>
+    <>
+      <header className="page-header">
+        <h1 className="page-title">Subscribe to newsletters</h1>
+        <p className="page-subtitle">
+          Use your inbound address when signing up — confirmation emails land here so you can finish
+          opt-in in one tap.
+        </p>
+      </header>
 
-        <ol style={{ fontSize: 14, lineHeight: 1.65, color: muted, paddingLeft: 20, marginBottom: 20 }}>
-          <li>Copy your inbound address below</li>
-          <li>Paste it when subscribing on a newsletter site</li>
-          <li>Refresh this page — click the confirm button when the email arrives</li>
+      <div className="card">
+        <h2 className="card-title">Quick setup</h2>
+        <ol className="steps">
+          <li className="step">
+            <span className="step-num">1</span>
+            <span>Copy your inbound address below</span>
+          </li>
+          <li className="step">
+            <span className="step-num">2</span>
+            <span>Paste it when subscribing on any newsletter site</span>
+          </li>
+          <li className="step">
+            <span className="step-num">3</span>
+            <span>Come back here and tap the confirm link when the email arrives</span>
+          </li>
         </ol>
 
-        {data?.inbound_address && (
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              alignItems: "center",
-              padding: "12px 14px",
-              border: `2px solid ${ink}`,
-              background: "#fff",
-              marginBottom: 20,
-            }}
-          >
-            <code style={{ flex: 1, fontSize: 14, wordBreak: "break-all" }}>{data.inbound_address}</code>
-            <button
-              onClick={copyInbound}
-              style={{
-                fontFamily: '"Helvetica Neue", Arial, sans-serif',
-                fontSize: 12,
-                fontWeight: 700,
-                padding: "8px 14px",
-                border: "none",
-                background: accent,
-                color: "#fff",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {copied ? "Copied!" : "Copy"}
+        {data?.inbound_address ? (
+          <div className="copy-box">
+            <code>{data.inbound_address}</code>
+            <button type="button" className="btn btn-primary btn-sm" onClick={copyInbound}>
+              {copied ? "Copied!" : "Copy address"}
             </button>
           </div>
-        )}
-
-        {!data?.inbound_address && (
-          <p style={{ fontSize: 13, color: muted, marginBottom: 20 }}>
-            Tip: set <code>INBOUND_ADDRESS</code> in Vercel (e.g.{" "}
-            <code>brief@yourdomain.com</code>) to show a copy box here.
-          </p>
-        )}
-
-        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
-          <input
-            type="password"
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && load()}
-            placeholder="access key (CRON_SECRET)"
-            style={{
-              flex: 1,
-              fontFamily: '"Helvetica Neue", Arial, sans-serif',
-              fontSize: 13,
-              padding: "9px 12px",
-              border: `1px solid ${rule}`,
-              background: "#fff",
-              color: ink,
-            }}
-          />
-          <button
-            onClick={load}
-            disabled={loading || !key.trim()}
-            style={{
-              fontFamily: '"Helvetica Neue", Arial, sans-serif',
-              fontSize: 13,
-              fontWeight: 700,
-              letterSpacing: ".08em",
-              textTransform: "uppercase",
-              padding: "10px 22px",
-              border: "none",
-              background: loading || !key.trim() ? "#b9a99f" : accent,
-              color: "#fff",
-              cursor: loading || !key.trim() ? "default" : "pointer",
-            }}
-          >
-            {loading ? "…" : "Refresh"}
-          </button>
-        </div>
-
-        <label
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            fontSize: 13,
-            color: muted,
-            fontFamily: '"Helvetica Neue", Arial, sans-serif',
-            marginBottom: 16,
-            cursor: "pointer",
-          }}
-        >
-          <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} />
-          Auto-refresh every 15s while waiting for confirmation emails
-        </label>
-
-        <div style={{ fontSize: 13, marginBottom: 20 }}>
-          <a href="/" style={{ color: accent }}>
-            ← Ask console
-          </a>
-          {" · "}
-          <a href="/api/status" style={{ color: accent }}>
-            Status API
-          </a>
-        </div>
-
-        {err && (
-          <div style={{ color: accent, fontFamily: '"Helvetica Neue", Arial, sans-serif', fontSize: 14, marginBottom: 16 }}>
-            {err}
+        ) : (
+          <div className="alert alert-info">
+            Set <code>INBOUND_ADDRESS</code> in Vercel (e.g. <code>brief@yourdomain.com</code>) to show
+            your address here. Load once with your key after it&apos;s set.
           </div>
         )}
-
-        {data && (
-          <section>
-            <div
-              style={{
-                fontFamily: '"Helvetica Neue", Arial, sans-serif',
-                fontSize: 12,
-                color: muted,
-                marginBottom: 20,
-              }}
-            >
-              {data.pending} pending · {data.confirmed} confirmed · {data.needs_manual} need review
-            </div>
-
-            {pending.length === 0 && confirmed.length === 0 && manual.length === 0 && (
-              <div
-                style={{
-                  padding: 16,
-                  border: `1px solid ${rule}`,
-                  background: "#fff",
-                  fontSize: 14,
-                  lineHeight: 1.55,
-                }}
-              >
-                No confirmation emails yet. Subscribe using your inbound address, then refresh
-                (or enable auto-refresh).
-              </div>
-            )}
-
-            {pending.length > 0 && (
-              <>
-                <h3
-                  style={{
-                    fontFamily: '"Helvetica Neue", Arial, sans-serif',
-                    fontSize: 11,
-                    letterSpacing: ".16em",
-                    textTransform: "uppercase",
-                    marginBottom: 10,
-                  }}
-                >
-                  Pending ({pending.length})
-                </h3>
-                {pending.map((c) => (
-                  <ConfirmCard key={c.id} c={c} keyVal={key} onConfirmed={load} />
-                ))}
-              </>
-            )}
-
-            {manual.length > 0 && (
-              <>
-                <h3
-                  style={{
-                    fontFamily: '"Helvetica Neue", Arial, sans-serif',
-                    fontSize: 11,
-                    letterSpacing: ".16em",
-                    textTransform: "uppercase",
-                    margin: "20px 0 10px",
-                  }}
-                >
-                  Needs review ({manual.length})
-                </h3>
-                {manual.map((c) => (
-                  <ConfirmCard key={c.id} c={c} keyVal={key} onConfirmed={load} />
-                ))}
-              </>
-            )}
-
-            {confirmed.length > 0 && (
-              <>
-                <h3
-                  style={{
-                    fontFamily: '"Helvetica Neue", Arial, sans-serif',
-                    fontSize: 11,
-                    letterSpacing: ".16em",
-                    textTransform: "uppercase",
-                    margin: "20px 0 10px",
-                    color: green,
-                  }}
-                >
-                  Confirmed ({confirmed.length})
-                </h3>
-                {confirmed.map((c) => (
-                  <ConfirmCard key={c.id} c={c} keyVal={key} onConfirmed={load} />
-                ))}
-              </>
-            )}
-          </section>
-        )}
       </div>
-    </main>
+
+      <div className="card">
+        <AccessKeyField value={key} onChange={setKey} id="confirm-key" />
+        <button type="button" className="btn btn-primary btn-block" onClick={load} disabled={loading}>
+          {loading ? "Loading…" : "Check for confirmations"}
+        </button>
+
+        <label className="checkbox-label" style={{ marginTop: "1rem", marginBottom: 0 }}>
+          <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} />
+          Auto-refresh every 15 seconds while waiting
+        </label>
+      </div>
+
+      {err && <div className="alert alert-error">{err}</div>}
+
+      {data && (
+        <>
+          <div className="stats">
+            <span className="stat-pill">
+              <strong>{data.pending}</strong> pending
+            </span>
+            <span className="stat-pill">
+              <strong>{data.confirmed}</strong> confirmed
+            </span>
+            {data.needs_manual > 0 && (
+              <span className="stat-pill">
+                <strong>{data.needs_manual}</strong> need review
+              </span>
+            )}
+          </div>
+
+          {pending.length === 0 && confirmed.length === 0 && manual.length === 0 && (
+            <div className="empty-state">
+              <div className="empty-state-icon">✉️</div>
+              <p>No confirmation emails yet.</p>
+              <p>Subscribe using your inbound address, then tap Check for confirmations.</p>
+            </div>
+          )}
+
+          {pending.length > 0 && (
+            <>
+              <h3 className="section-heading">Waiting for you ({pending.length})</h3>
+              {pending.map((c) => (
+                <ConfirmCard key={c.id} c={c} keyVal={key} onConfirmed={load} />
+              ))}
+            </>
+          )}
+
+          {manual.length > 0 && (
+            <>
+              <h3 className="section-heading">Needs review ({manual.length})</h3>
+              {manual.map((c) => (
+                <ConfirmCard key={c.id} c={c} keyVal={key} onConfirmed={load} />
+              ))}
+            </>
+          )}
+
+          {confirmed.length > 0 && (
+            <>
+              <h3 className="section-heading">Done ({confirmed.length})</h3>
+              {confirmed.map((c) => (
+                <ConfirmCard key={c.id} c={c} keyVal={key} onConfirmed={load} />
+              ))}
+            </>
+          )}
+        </>
+      )}
+
+      <p style={{ marginTop: "1.5rem", fontSize: "0.875rem", color: "var(--text-muted)" }}>
+        Newsletters start flowing after you confirm. Then go to{" "}
+        <Link href="/">Home</Link> to generate your briefing.
+      </p>
+    </>
   );
 }

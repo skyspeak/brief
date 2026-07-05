@@ -1,14 +1,10 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Link from "next/link";
 import { parseApiResponse, apiError } from "@/lib/parse-api-response";
-
-const paper = "#faf7f0";
-const ink = "#1a1714";
-const accent = "#9a2515";
-const rule = "#c9bfae";
-const muted = "#6b6356";
-const green = "#3f7d3f";
+import { useAccessKey } from "../components/useAccessKey";
+import AccessKeyField from "../components/AccessKeyField";
 
 function fmtTime(unix) {
   if (!unix) return "";
@@ -19,15 +15,19 @@ function fmtTime(unix) {
 }
 
 export default function NewslettersPage() {
-  const [key, setKey] = useState("");
+  const { key, setKey } = useAccessKey();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [summarizing, setSummarizing] = useState(null);
   const [err, setErr] = useState("");
+  const [msg, setMsg] = useState("");
   const [expanded, setExpanded] = useState(null);
 
   const load = useCallback(async () => {
-    if (!key.trim()) return;
+    if (!key.trim()) {
+      setErr("Add your access key to load newsletters.");
+      return;
+    }
     setErr("");
     setLoading(true);
     try {
@@ -44,18 +44,16 @@ export default function NewslettersPage() {
     }
   }, [key]);
 
-  const [msg, setMsg] = useState("");
-
-  async function requireKey() {
+  function requireKey() {
     if (!key.trim()) {
-      setErr("Enter your access key (CRON_SECRET) first.");
+      setErr("Add your access key first.");
       return false;
     }
     return true;
   }
 
   async function summarize(id) {
-    if (!(await requireKey())) return;
+    if (!requireKey()) return;
     setSummarizing(id || "all");
     setErr("");
     setMsg("");
@@ -71,7 +69,8 @@ export default function NewslettersPage() {
       if (!r.ok) throw new Error(apiError(parsed, "summarize failed"));
       if (d.error) throw new Error(d.error);
       if (d.summarized) {
-        setMsg("Summarized — expand the row to see the extract.");
+        setMsg("Done — tap Show extract to read it.");
+        setExpanded(id);
       } else if (d.skipped) {
         setMsg(d.reason || "Skipped.");
       } else if (d.results) {
@@ -88,10 +87,10 @@ export default function NewslettersPage() {
   }
 
   async function summarizeAll() {
-    if (!(await requireKey())) return;
+    if (!requireKey()) return;
     setSummarizing("all");
     setErr("");
-    setMsg("Extracting…");
+    setMsg("Reading newsletters…");
     try {
       let done = 0;
       for (let i = 0; i < 200; i++) {
@@ -106,18 +105,18 @@ export default function NewslettersPage() {
         if (!r.ok) throw new Error(apiError(parsed, "summarize failed"));
         if ((d.remaining ?? 0) === 0) break;
         done += d.summarized ?? 0;
-        setMsg(`Extracting… ${done} done, ${d.remaining} remaining`);
+        setMsg(`Reading… ${done} done, ${d.remaining} remaining`);
         const firstErr = d.results?.find((x) => x.error)?.error;
         if ((d.summarized ?? 0) === 0 && firstErr) {
           if (d.rate_limited) {
-            setMsg("Rate limited — waiting 15s…");
+            setMsg("Rate limited — pausing 15s…");
             await new Promise((x) => setTimeout(x, 15000));
             continue;
           }
           throw new Error(firstErr);
         }
       }
-      setMsg(`Done — ${done} extracted. Use Generate briefing on the homepage for the full digest.`);
+      setMsg("All caught up! Head to Home for the full briefing.");
       await load();
     } catch (e) {
       setErr(e.message);
@@ -128,207 +127,122 @@ export default function NewslettersPage() {
   }
 
   return (
-    <main
-      style={{
-        background: paper,
-        color: ink,
-        minHeight: "100vh",
-        fontFamily: 'Georgia, "Times New Roman", serif',
-        padding: "48px 20px",
-      }}
-    >
-      <div style={{ maxWidth: 760, margin: "0 auto" }}>
-        <header style={{ borderBottom: `3px double ${ink}`, paddingBottom: 10, marginBottom: 22 }}>
-          <div
-            style={{
-              fontFamily: '"Helvetica Neue", Arial, sans-serif',
-              fontSize: 11,
-              letterSpacing: ".18em",
-              textTransform: "uppercase",
-              color: muted,
-            }}
-          >
-            Neutral view
-          </div>
-          <h1
-            style={{
-              fontFamily: '"Helvetica Neue", Arial, sans-serif',
-              fontSize: 40,
-              margin: "4px 0 0",
-              letterSpacing: ".04em",
-            }}
-          >
-            NEWSLETTERS
-          </h1>
-          <div style={{ fontStyle: "italic", color: accent, fontSize: 14, marginTop: 4 }}>
-            Raw corpus — no persona filter
-          </div>
-        </header>
+    <>
+      <header className="page-header">
+        <h1 className="page-title">Your inbox</h1>
+        <p className="page-subtitle">
+          Every newsletter that&apos;s arrived. Tap one to extract facts, or generate the full briefing on{" "}
+          <Link href="/">Home</Link>.
+        </p>
+      </header>
 
-        <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-          <input
-            type="password"
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && load()}
-            placeholder="access key (CRON_SECRET)"
-            style={{
-              flex: 1,
-              fontFamily: '"Helvetica Neue", Arial, sans-serif',
-              fontSize: 13,
-              padding: "9px 12px",
-              border: `1px solid ${rule}`,
-              background: "#fff",
-            }}
-          />
-          <button
-            onClick={load}
-            disabled={loading || !key.trim()}
-            style={btnStyle(loading || !key.trim())}
-          >
-            {loading ? "…" : "Load"}
-          </button>
-        </div>
-
-        {data && data.pending_count > 0 && (
-          <button
-            onClick={summarizeAll}
-            disabled={summarizing === "all"}
-            style={{ ...btnStyle(summarizing === "all"), marginBottom: 16 }}
-          >
-            {summarizing === "all"
-              ? "Summarizing…"
-              : `Summarize this — all pending (${data.pending_count})`}
-          </button>
-        )}
-
-        <div style={{ fontSize: 13, marginBottom: 20, color: muted, fontFamily: '"Helvetica Neue", Arial, sans-serif' }}>
-          <a href="/" style={{ color: accent }}>
-            ← Ask console
-          </a>
-          {" · "}
-          <a href="/confirm" style={{ color: accent }}>
-            Confirm subscriptions
-          </a>
-        </div>
-
-        {err && <div style={{ color: accent, marginBottom: 16, fontSize: 14 }}>{err}</div>}
-        {msg && <div style={{ color: green, marginBottom: 16, fontSize: 14 }}>{msg}</div>}
-
-        {data && (
-          <div
-            style={{
-              fontFamily: '"Helvetica Neue", Arial, sans-serif',
-              fontSize: 12,
-              color: muted,
-              marginBottom: 16,
-            }}
-          >
-            {data.count} newsletters · {data.with_summary} summarized · {data.pending_count} pending
-          </div>
-        )}
-
-        {data?.newsletters?.map((n) => (
-          <article
-            key={n.id}
-            style={{
-              border: `1px solid ${rule}`,
-              background: "#fff",
-              padding: 14,
-              marginBottom: 12,
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: muted }}>
-                  {fmtTime(n.received_at)} · {n.sender}
-                </div>
-                <h2 style={{ fontSize: 17, margin: "4px 0 8px", lineHeight: 1.25 }}>{n.subject}</h2>
-                <div style={{ fontSize: 11, fontFamily: '"Helvetica Neue", Arial, sans-serif', color: muted }}>
-                  body {n.body_len} chars
-                  {n.has_summary ? (
-                    <span style={{ color: green }}> · summarized</span>
-                  ) : n.body_len > 120 ? (
-                    <span style={{ color: accent }}> · needs summarize</span>
-                  ) : (
-                    <span> · no body</span>
-                  )}
-                  {n.confirmed_at && <span> · confirmed</span>}
-                </div>
-              </div>
-              {!n.has_summary && n.body_len > 120 && (
-                <button
-                  onClick={() => summarize(n.id)}
-                  disabled={!!summarizing}
-                  style={{
-                    ...btnStyle(!!summarizing),
-                    fontSize: 11,
-                    padding: "8px 12px",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {summarizing === n.id ? "…" : "Summarize this"}
-                </button>
-              )}
-            </div>
-
-            {n.has_summary && (
-              <>
-                <button
-                  onClick={() => setExpanded(expanded === n.id ? null : n.id)}
-                  style={{
-                    marginTop: 10,
-                    fontSize: 12,
-                    fontFamily: '"Helvetica Neue", Arial, sans-serif',
-                    background: "none",
-                    border: "none",
-                    color: accent,
-                    cursor: "pointer",
-                    padding: 0,
-                  }}
-                >
-                  {expanded === n.id ? "Hide extract" : "Show extract"}
-                </button>
-                {expanded === n.id && (
-                  <pre
-                    style={{
-                      marginTop: 10,
-                      fontSize: 13,
-                      lineHeight: 1.55,
-                      whiteSpace: "pre-wrap",
-                      background: paper,
-                      padding: 12,
-                      border: `1px solid ${rule}`,
-                      fontFamily: "inherit",
-                    }}
-                  >
-                    {n.summary}
-                  </pre>
-                )}
-              </>
-            )}
-          </article>
-        ))}
-
-        {data?.newsletters?.length === 0 && (
-          <p style={{ color: muted, fontSize: 14 }}>No newsletters yet — send some to your inbound address.</p>
-        )}
+      <div className="card">
+        <AccessKeyField value={key} onChange={setKey} id="inbox-key" />
+        <button
+          type="button"
+          className="btn btn-primary btn-block"
+          onClick={load}
+          disabled={loading}
+        >
+          {loading ? "Loading…" : "Load newsletters"}
+        </button>
       </div>
-    </main>
-  );
-}
 
-function btnStyle(disabled) {
-  return {
-    fontFamily: '"Helvetica Neue", Arial, sans-serif',
-    fontSize: 13,
-    fontWeight: 700,
-    letterSpacing: ".06em",
-    textTransform: "uppercase",
-    padding: "10px 18px",
-    border: "none",
-    background: disabled ? "#b9a99f" : accent,
-    color: "#fff",
-    cursor: disabled ? "default" : "pointer",
-  };
+      {err && <div className="alert alert-error">{err}</div>}
+      {msg && <div className="alert alert-success">{msg}</div>}
+
+      {data && (
+        <>
+          <div className="stats">
+            <span className="stat-pill">
+              <strong>{data.count}</strong> total
+            </span>
+            <span className="stat-pill">
+              <strong>{data.with_summary}</strong> read
+            </span>
+            <span className="stat-pill">
+              <strong>{data.pending_count}</strong> pending
+            </span>
+          </div>
+
+          {data.pending_count > 0 && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-block"
+              onClick={summarizeAll}
+              disabled={summarizing === "all"}
+              style={{ marginBottom: "1rem" }}
+            >
+              {summarizing === "all"
+                ? "Reading all pending…"
+                : `Read all pending (${data.pending_count})`}
+            </button>
+          )}
+
+          {data.newsletters?.length === 0 && (
+            <div className="empty-state">
+              <div className="empty-state-icon">📭</div>
+              <p>No newsletters yet.</p>
+              <p>
+                Subscribe using your inbound address on the{" "}
+                <Link href="/confirm">Subscribe</Link> page.
+              </p>
+            </div>
+          )}
+
+          {data.newsletters?.map((n) => (
+            <article key={n.id} className="nl-card">
+              <div className="nl-card-header">
+                <div>
+                  <div className="nl-meta">
+                    {fmtTime(n.received_at)}
+                    {n.sender && ` · ${n.sender}`}
+                  </div>
+                  <h2 className="nl-title">{n.subject}</h2>
+                  <div className="nl-status">
+                    {n.has_summary ? (
+                      <span className="badge badge-ready">Ready</span>
+                    ) : n.body_len > 120 ? (
+                      <span className="badge badge-pending">Needs read</span>
+                    ) : (
+                      <span className="badge">No body</span>
+                    )}
+                    {n.confirmed_at && (
+                      <span className="badge badge-done" style={{ marginLeft: "0.35rem" }}>
+                        Subscribed
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {!n.has_summary && n.body_len > 120 && (
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={() => summarize(n.id)}
+                    disabled={!!summarizing}
+                  >
+                    {summarizing === n.id ? "…" : "Read"}
+                  </button>
+                )}
+              </div>
+
+              {n.has_summary && (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ marginTop: "0.5rem" }}
+                    onClick={() => setExpanded(expanded === n.id ? null : n.id)}
+                  >
+                    {expanded === n.id ? "Hide extract" : "Show extract"}
+                  </button>
+                  {expanded === n.id && <div className="nl-extract">{n.summary}</div>}
+                </>
+              )}
+            </article>
+          ))}
+        </>
+      )}
+    </>
+  );
 }

@@ -1,12 +1,22 @@
+import "./globals.css";
+import AppShell from "./components/AppShell";
+
 export const metadata = {
-  title: "The Brief — Console",
-  description: "Ask your newsletter corpus anything.",
+  title: "The Brief",
+  description: "Your newsletters, summarized into one intelligent briefing.",
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body style={{ margin: 0 }}>{children}</body>
+      <body>
+        <AppShell>{children}</AppShell>
+      </body>
     </html>
   );
 }
