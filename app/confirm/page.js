@@ -109,13 +109,27 @@ function ConfirmCard({ c, keyVal, onConfirmed }) {
   );
 }
 
-export default function ConfirmPage() {
+export default function SetupPage() {
   const { key, setKey } = useAccessKey();
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [gmail, setGmail] = useState(null);
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
+  const [syncMsg, setSyncMsg] = useState("");
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const loadGmail = useCallback(async () => {
+    if (!key.trim()) return;
+    try {
+      const r = await fetch(`/api/gmail/status?key=${encodeURIComponent(key)}`);
+      const parsed = await parseApiResponse(r);
+      if (parsed.data && r.ok) setGmail(parsed.data);
+    } catch {
+      setGmail(null);
+    }
+  }, [key]);
 
   const load = useCallback(async () => {
     if (!key.trim()) {
@@ -125,6 +139,7 @@ export default function ConfirmPage() {
     setErr("");
     setLoading(true);
     try {
+      await loadGmail();
       const r = await fetch(`/api/confirmations?key=${encodeURIComponent(key)}`);
       const parsed = await parseApiResponse(r);
       const d = parsed.data;
@@ -136,7 +151,7 @@ export default function ConfirmPage() {
     } finally {
       setLoading(false);
     }
-  }, [key]);
+  }, [key, loadGmail]);
 
   useEffect(() => {
     if (!autoRefresh || !key.trim()) return;
@@ -144,9 +159,48 @@ export default function ConfirmPage() {
     return () => clearInterval(t);
   }, [autoRefresh, key, load]);
 
-  function copyInbound() {
-    if (!data?.inbound_address) return;
-    navigator.clipboard.writeText(data.inbound_address);
+  function connectGmail() {
+    if (!key.trim()) {
+      setErr("Add your access key first.");
+      return;
+    }
+    window.location.href = `/api/gmail/auth?key=${encodeURIComponent(key)}`;
+  }
+
+  async function syncInbox() {
+    if (!key.trim()) {
+      setErr("Add your access key first.");
+      return;
+    }
+    setSyncMsg("");
+    setErr("");
+    setSyncing(true);
+    try {
+      const r = await fetch("/api/sync", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ key }),
+      });
+      const parsed = await parseApiResponse(r);
+      const d = parsed.data;
+      if (!d) throw new Error(apiError(parsed, "sync failed"));
+      if (!r.ok) throw new Error(apiError(parsed, "sync failed"));
+      const trashed = d.trashed ? `, ${d.trashed} trashed` : "";
+      setSyncMsg(
+        `Synced ${d.ingested} new message${d.ingested === 1 ? "" : "s"} (${d.checked} checked${trashed}).`
+      );
+      await load();
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  function copyAddress() {
+    const addr = data?.inbound_address || gmail?.email;
+    if (!addr) return;
+    navigator.clipboard.writeText(addr);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -154,51 +208,96 @@ export default function ConfirmPage() {
   const pending = data?.pending_list || [];
   const confirmed = data?.confirmed_list || [];
   const manual = (data?.confirmations || []).filter((c) => c.status === "manual");
+  const gmailAddress = data?.inbound_address || gmail?.email;
 
   return (
     <>
       <header className="page-header">
-        <h1 className="page-title">Subscribe to newsletters</h1>
+        <h1 className="page-title">Setup</h1>
         <p className="page-subtitle">
-          Use your inbound address when signing up — confirmation emails land here so you can finish
-          opt-in in one tap.
+          Connect your personal Gmail — newsletters arrive there, we sync and summarize them, and digests
+          send from the same account.
         </p>
       </header>
 
       <div className="card">
-        <h2 className="card-title">Quick setup</h2>
+        <h2 className="card-title">1. Connect Gmail</h2>
+        <AccessKeyField value={key} onChange={setKey} id="setup-key" onBlur={loadGmail} />
+
+        {gmail?.connected ? (
+          <div className="alert alert-success" style={{ marginBottom: "1rem" }}>
+            Connected as <strong>{gmail.email || "your account"}</strong>
+            {gmail.last_sync_at && (
+              <span> · last sync {fmtTime(gmail.last_sync_at)}</span>
+            )}
+          </div>
+        ) : gmail?.oauth_configured === false ? (
+          <div className="alert alert-warning" style={{ marginBottom: "1rem" }}>
+            Add <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> in Vercel, then redeploy.
+          </div>
+        ) : (
+          <div className="alert alert-info" style={{ marginBottom: "1rem" }}>
+            Sign in with Google so we can read your newsletters and send digests from your address.
+          </div>
+        )}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          {!gmail?.connected && (
+            <button type="button" className="btn btn-primary btn-block" onClick={connectGmail}>
+              Connect Gmail
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn btn-secondary btn-block"
+            onClick={syncInbox}
+            disabled={syncing || !gmail?.connected}
+          >
+            {syncing ? "Syncing inbox…" : "Sync inbox now"}
+          </button>
+        </div>
+        {syncMsg && <div className="alert alert-success" style={{ marginTop: "1rem", marginBottom: 0 }}>{syncMsg}</div>}
+      </div>
+
+      <div className="card">
+        <h2 className="card-title">2. Subscribe to newsletters</h2>
         <ol className="steps">
           <li className="step">
             <span className="step-num">1</span>
-            <span>Copy your inbound address below</span>
+            <span>Use your Gmail address when signing up for newsletters</span>
           </li>
           <li className="step">
             <span className="step-num">2</span>
-            <span>Paste it when subscribing on any newsletter site</span>
+            <span>Tap Sync inbox — confirmation emails appear below</span>
           </li>
           <li className="step">
             <span className="step-num">3</span>
-            <span>Come back here and tap the confirm link when the email arrives</span>
+            <span>Confirm subscriptions, then generate your briefing on Home</span>
           </li>
         </ol>
 
-        {data?.inbound_address ? (
+        {gmailAddress ? (
           <div className="copy-box">
-            <code>{data.inbound_address}</code>
-            <button type="button" className="btn btn-primary btn-sm" onClick={copyInbound}>
+            <code>{gmailAddress}</code>
+            <button type="button" className="btn btn-primary btn-sm" onClick={copyAddress}>
               {copied ? "Copied!" : "Copy address"}
             </button>
           </div>
         ) : (
           <div className="alert alert-info">
-            Set <code>INBOUND_ADDRESS</code> in Vercel (e.g. <code>brief@yourdomain.com</code>) to show
-            your address here. Load once with your key after it&apos;s set.
+            Connect Gmail above to show your address here.
           </div>
         )}
+
+        <p className="field-hint" style={{ marginBottom: 0 }}>
+          Tip: create a Gmail filter to label subscription mail (e.g. &quot;Newsletters&quot;) and set{" "}
+          <code>GMAIL_LABEL=Newsletters</code> in Vercel so sync ignores personal email. Summarized
+          newsletters are moved to Gmail Trash automatically (recoverable for 30 days).
+        </p>
       </div>
 
       <div className="card">
-        <AccessKeyField value={key} onChange={setKey} id="confirm-key" />
+        <h2 className="card-title">3. Confirm subscriptions</h2>
         <button type="button" className="btn btn-primary btn-block" onClick={load} disabled={loading}>
           {loading ? "Loading…" : "Check for confirmations"}
         </button>
@@ -231,7 +330,7 @@ export default function ConfirmPage() {
             <div className="empty-state">
               <div className="empty-state-icon">✉️</div>
               <p>No confirmation emails yet.</p>
-              <p>Subscribe using your inbound address, then tap Check for confirmations.</p>
+              <p>Subscribe using your Gmail address, sync inbox, then check again.</p>
             </div>
           )}
 
@@ -265,8 +364,8 @@ export default function ConfirmPage() {
       )}
 
       <p style={{ marginTop: "1.5rem", fontSize: "0.875rem", color: "var(--text-muted)" }}>
-        Newsletters start flowing after you confirm. Then go to{" "}
-        <Link href="/">Home</Link> to generate your briefing.
+        After newsletters are flowing, go to <Link href="/">Home</Link> to generate your briefing or send a
+        digest email.
       </p>
     </>
   );

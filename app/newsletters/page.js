@@ -184,8 +184,8 @@ export default function NewslettersPage() {
               <div className="empty-state-icon">📭</div>
               <p>No newsletters yet.</p>
               <p>
-                Subscribe using your inbound address on the{" "}
-                <Link href="/confirm">Subscribe</Link> page.
+                Subscribe using your Gmail address on{" "}
+                <Link href="/confirm">Setup</Link>.
               </p>
             </div>
           )}

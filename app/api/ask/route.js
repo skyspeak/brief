@@ -1,7 +1,9 @@
-// app/api/ask/route.js — free-form question over the corpus using digest prompt library.
-import { allSummaries } from "@/lib/db";
+// app/api/ask/route.js — free-form question over the corpus.
+import { allEmailsWithBodies } from "@/lib/db";
 import { callLLM } from "@/lib/llm";
 import { buildAskPrompt } from "@/lib/prompts";
+import { prepareNewsletterContentForDigest, publicationHint } from "@/lib/newsletter-text";
+import { isConfirmationEmail } from "@/lib/confirmations";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,19 +20,27 @@ export async function POST(req) {
     return Response.json({ error: "missing question" }, { status: 400 });
   }
 
-  const rows = await allSummaries(500);
-  const usable = rows.filter((r) => r.summary && r.summary.length);
-  if (!usable.length) {
+  const rows = (await allEmailsWithBodies()).filter(
+    (e) => !isConfirmationEmail(e) && e.tags !== "confirmation" && (e.body_text || e.body_html)
+  );
+  if (!rows.length) {
     return Response.json({
-      answer: "No summarized newsletters yet — give the pipeline a few inbound issues first.",
+      answer: "No newsletters in the corpus yet — sync your Gmail inbox first.",
       sources: [],
     });
   }
 
-  const extracts = usable
+  const extracts = rows
     .map((r, i) => {
       const when = new Date(r.received_at * 1000).toISOString().slice(0, 10);
-      return `### [${i + 1}] ${r.subject || "(no subject)"} — ${r.sender} • ${when}\n${r.summary}`;
+      const pub = publicationHint({ sender: r.sender, subject: r.subject });
+      const text = prepareNewsletterContentForDigest(r.body_text || "", {
+        body_html: r.body_html,
+        subject: r.subject,
+        sender: r.sender,
+        receivedAt: r.received_at,
+      });
+      return `### [${i + 1}] ${pub || r.subject || "(no subject)"} — ${r.sender} • ${when}\n${text}`;
     })
     .join("\n\n---\n\n");
 
@@ -39,7 +49,7 @@ export async function POST(req) {
     personaKey: persona,
     question: question.trim(),
     runDate,
-    n: usable.length,
+    n: rows.length,
     extracts,
   });
 
@@ -48,6 +58,6 @@ export async function POST(req) {
   return Response.json({
     answer,
     persona,
-    sources: usable.map((r, i) => ({ n: i + 1, subject: r.subject, sender: r.sender })),
+    sources: rows.map((r, i) => ({ n: i + 1, subject: r.subject, sender: r.sender })),
   });
 }

@@ -25,6 +25,11 @@ export default function Home() {
   const [res, setRes] = useState(null);
   const [err, setErr] = useState("");
   const [showAsk, setShowAsk] = useState(false);
+  const [digestSending, setDigestSending] = useState(false);
+  const [digestRes, setDigestRes] = useState(null);
+  const [digestErr, setDigestErr] = useState("");
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState("");
 
   async function refreshPending() {
     if (!key.trim()) return;
@@ -62,51 +67,6 @@ export default function Home() {
       const cleanParsed = await parseApiResponse(cleanRes);
       if (!cleanRes.ok) throw new Error(apiError(cleanParsed, "clean failed"));
 
-      let extracted = 0;
-      let stalls = 0;
-      for (let guard = 0; guard < 200; guard++) {
-        const sumRes = await fetch("/api/summarize", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ key, limit: 1 }),
-        });
-        const sumParsed = await parseApiResponse(sumRes);
-        const d = sumParsed.data;
-        if (!d) throw new Error(apiError(sumParsed, "summarize failed"));
-        if (!sumRes.ok) throw new Error(apiError(sumParsed, "summarize failed"));
-
-        const remaining = d.remaining ?? 0;
-        setProgress(
-          remaining > 0
-            ? `Reading newsletters… ${extracted} done, ${remaining} left`
-            : `Reading newsletters… ${extracted} done`
-        );
-
-        if (remaining === 0) break;
-
-        if ((d.summarized ?? 0) > 0) {
-          extracted += d.summarized;
-          stalls = 0;
-        } else {
-          stalls++;
-          const firstErr = d.results?.find((r) => r.error)?.error;
-          if (firstErr && d.rate_limited) {
-            setProgress("Rate limited — pausing 15 seconds…");
-            await new Promise((r) => setTimeout(r, 15000));
-            continue;
-          }
-          if (firstErr) throw new Error(firstErr);
-          if (stalls >= 5) {
-            throw new Error("Stuck — check GEMINI_API_KEY in Vercel, then try again.");
-          }
-        }
-
-        if (d.rate_limited) {
-          setProgress("Rate limited — pausing 15 seconds…");
-          await new Promise((r) => setTimeout(r, 15000));
-        }
-      }
-
       setProgress("Writing your briefing…");
       const briefRes = await fetch("/api/briefing", {
         method: "POST",
@@ -131,6 +91,64 @@ export default function Home() {
       setProgress("");
     } finally {
       setBriefing(false);
+    }
+  }
+
+  async function syncInbox() {
+    if (!requireKey()) return;
+    setSyncMsg("");
+    setErr("");
+    setSyncing(true);
+    try {
+      const r = await fetch("/api/sync", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ key }),
+      });
+      const parsed = await parseApiResponse(r);
+      const d = parsed.data;
+      if (!d) throw new Error(apiError(parsed, "sync failed"));
+      if (!r.ok) throw new Error(apiError(parsed, "sync failed"));
+      const trashed = d.trashed ? `, ${d.trashed} moved to Gmail Trash` : "";
+      setSyncMsg(`Synced ${d.ingested} new newsletter${d.ingested === 1 ? "" : "s"}${trashed}.`);
+      await refreshPending();
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  async function forceSendDigest() {
+    if (!requireKey()) return;
+    setDigestErr("");
+    setDigestRes(null);
+    setDigestSending(true);
+    try {
+      const r = await fetch("/api/digest", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ key, force: true }),
+      });
+      const parsed = await parseApiResponse(r);
+      const d = parsed.data;
+      if (!d) throw new Error(apiError(parsed, "digest failed"));
+      if (d.error) throw new Error(d.error);
+      if (!r.ok) throw new Error(apiError(parsed, "digest failed"));
+      if (d.skipped) {
+        throw new Error(
+          d.reason === "empty window"
+            ? "No newsletters in the digest window yet."
+            : d.reason === "interval"
+              ? "Digest interval not elapsed — force send should bypass this; try again."
+              : `Digest skipped (${d.reason || "unknown"}).`
+        );
+      }
+      setDigestRes(d);
+    } catch (e) {
+      setDigestErr(e.message);
+    } finally {
+      setDigestSending(false);
     }
   }
 
@@ -173,15 +191,15 @@ export default function Home() {
         <ol className="steps">
           <li className="step">
             <span className="step-num">1</span>
-            <span>Forward newsletters to your inbound address (set up on Subscribe)</span>
+            <span>Connect Gmail on Setup and subscribe newsletters to that address</span>
           </li>
           <li className="step">
             <span className="step-num">2</span>
-            <span>Tap Generate briefing — we clean, read, and synthesize everything</span>
+            <span>Sync inbox, then tap Generate briefing</span>
           </li>
           <li className="step">
             <span className="step-num">3</span>
-            <span>Get Top 3 Themes, 3 Stories, 3 Emerging signals, and 3 Follow-ups</span>
+            <span>Get Talking Points, Stats, and Insights across all synced newsletters</span>
           </li>
         </ol>
       </div>
@@ -210,10 +228,20 @@ export default function Home() {
 
         {pendingCount !== null && pendingCount > 0 && (
           <div className="alert alert-info">
-            {pendingCount} newsletter{pendingCount === 1 ? "" : "s"} still need to be read — briefing
-            will process them automatically.
+            {pendingCount} newsletter{pendingCount === 1 ? "" : "s"} ready — generate briefing to
+            extract talking points, stats, and insights.
           </div>
         )}
+
+        <button
+          type="button"
+          className="btn btn-secondary btn-block"
+          onClick={syncInbox}
+          disabled={syncing || briefing}
+          style={{ marginBottom: "0.75rem" }}
+        >
+          {syncing ? "Syncing Gmail…" : "Sync inbox"}
+        </button>
 
         <button
           type="button"
@@ -231,7 +259,55 @@ export default function Home() {
         </button>
 
         {progress && <div className="alert alert-info" style={{ marginTop: "1rem", marginBottom: 0 }}>{progress}</div>}
+        {syncMsg && <div className="alert alert-success" style={{ marginTop: "1rem", marginBottom: 0 }}>{syncMsg}</div>}
       </div>
+
+      <div className="card">
+        <h2 className="card-title">Email digest</h2>
+        <p className="field-hint" style={{ marginTop: 0 }}>
+          Send the scheduled digest from your Gmail and preview it here. Uses newsletters from the last few
+          days (same as the cron job).
+        </p>
+        <button
+          type="button"
+          className="btn btn-secondary btn-block"
+          onClick={forceSendDigest}
+          disabled={digestSending || briefing}
+        >
+          {digestSending ? (
+            <>
+              <span className="spinner" aria-hidden /> Sending digest…
+            </>
+          ) : (
+            "Send digest now"
+          )}
+        </button>
+      </div>
+
+      {digestErr && <div className="alert alert-error">{digestErr}</div>}
+
+      {digestRes?.editions?.length > 0 && (
+        <div className="result">
+          <div
+            className={digestRes.sent ? "alert alert-success" : "alert alert-error"}
+            style={{ marginBottom: "1rem" }}
+          >
+            {digestRes.sent
+              ? `Digest sent via Gmail from ${digestRes.sources} newsletter${digestRes.sources === 1 ? "" : "s"}.`
+              : digestRes.editions.find((e) => e.error)?.error || "Digest built but email was not sent."}
+          </div>
+          {digestRes.editions.map((edition) => (
+            <div key={edition.persona} style={{ marginBottom: edition.persona !== digestRes.editions.at(-1)?.persona ? "1.5rem" : 0 }}>
+              {digestRes.editions.length > 1 && (
+                <h3 className="card-title" style={{ fontSize: "0.9375rem", marginBottom: "0.75rem" }}>
+                  {edition.label}
+                </h3>
+              )}
+              <div className="result-body">{edition.markdown}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="card">
         <button

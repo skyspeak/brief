@@ -1,82 +1,77 @@
 # Newsletter Magazine
 
-A serverless pipeline that ingests email newsletters, **summarizes each one at ingest**,
-and weekly distills them into **one tailored magazine per persona** (PDF, ≤3 pages) emailed
-to you. Plus an **ask console** to query your whole corpus on demand. Switchable model
-provider (Claude / Gemini / OpenRouter). Deploys to Vercel; no local dev required.
+A serverless pipeline that connects to your **personal Gmail**, summarizes each newsletter as it arrives,
+and periodically distills them into **one tailored digest per persona** emailed from your Gmail account.
+Plus an on-demand **briefing console** and ask-over-corpus. Deploys to Vercel.
 
 ```
-Newsletters ─▶ Resend Inbound ─▶ /api/webhook ─▶ Turso
-                                       │ store raw, then summarize + tag (1 cheap LLM call)
-                                       ▼
-        (Vercel Cron, weekly) ─▶ for each persona: summaries → tailored magazine → Resend
-                                       │
-        (anytime) /  ─▶ ask console ─▶ /api/ask ─▶ analyst answer over the corpus + citations
+Gmail inbox ──▶ /api/sync (hourly cron) ──▶ Turso
+                      │ store raw, summarize + tag
+                      ▼
+Vercel Cron ──▶ /api/digest ──▶ buildDigest (LLM) ──▶ Gmail send
+                      │
+Home (/) ──▶ briefing + ask ──▶ same corpus
 ```
+
+## Deploy
+
+1. Push to GitHub and import at [vercel.com/new](https://vercel.com/new).
+2. Create a [Google Cloud project](https://console.cloud.google.com/) → enable **Gmail API**.
+3. Create **OAuth 2.0 Client** (Web application):
+   - Authorized redirect URI: `https://<your-app>.vercel.app/api/gmail/callback`
+   - (Local dev: `http://localhost:3000/api/gmail/callback`)
+4. Set environment variables in Vercel (see `.env.example`).
+5. Deploy, then open **Setup** in the app → enter `CRON_SECRET` → **Connect Gmail**.
+6. Subscribe newsletters using your Gmail address → **Sync inbox**.
+
+### Recommended: Gmail label filter
+
+Create a Gmail filter (e.g. label **Newsletters**) for subscription senders, then set in Vercel:
+
+```
+GMAIL_LABEL=Newsletters
+```
+
+Without a label, sync pulls recent inbox mail matching the default query.
 
 ## File map
 
 | Path | Role |
-|---|---|
-| `app/page.js` + `app/layout.js` | Ask console (homepage) |
-| `app/api/webhook/route.js` | Inbound receiver: verify → store → summarize |
-| `app/api/digest/route.js`  | Weekly cron target; one magazine per persona |
-| `app/api/preview/route.js` | Render a magazine without sending (`?format=pdf`) |
-| `app/api/ask/route.js`     | Answer a question over the corpus |
-| `lib/personas.js`          | **Edit this** to define who gets a digest and how |
-| `lib/summarize.js`         | Per-email summary + tags at ingest |
-| `lib/issue.js`             | Persona-lens issue builder (runs over summaries) |
-| `lib/magazine.js`          | Editorial print-CSS template |
-| `lib/pdf.js` · `lib/resend.js` · `lib/db.js` · `lib/digest.js` · `lib/llm.js` | render / send / store / orchestrate / model switch |
-| `vercel.json`              | Cron schedule |
-
-## Deploy (browser only — see chat for the click-by-click)
-
-1. Push these files to a GitHub repo.
-2. Import the repo at vercel.com/new; bulk-paste your filled-in `.env` into the
-   Environment Variables box; deploy.
-3. Create a Resend webhook → `https://<app>.vercel.app/api/webhook`, event
-   `email.received`; put its secret in `RESEND_WEBHOOK_SECRET`; **redeploy** (registers cron).
-4. Subscribe newsletters to your `*.resend.app` inbound address; confirm opt-ins.
+|------|------|
+| `lib/gmail.js` | OAuth, read messages, send digest via Gmail API |
+| `lib/gmail-sync.js` | Poll inbox → store → summarize |
+| `app/api/sync/route.js` | Manual + cron inbox sync |
+| `app/api/gmail/*` | OAuth connect flow |
+| `app/api/digest/route.js` | Scheduled digest send |
+| `app/confirm/page.js` | Setup: connect Gmail, sync, confirm subscriptions |
+| `lib/personas.js` | Who gets a digest and how it's framed |
 
 ## Personas
 
-Open `lib/personas.js` and edit the list — each entry is `{ id, label, lens, to? }`. The
-weekly run produces one magazine per persona, framed by its `lens`, sent to `to` (or
-`DIGEST_TO`). The shipped example includes a **Healthcare Sales Edition**. Editing the file
-in GitHub's web editor auto-redeploys.
+Edit `lib/personas.js` — each entry is `{ id, label, personaKey, to?, digest? }`. Digests send via Gmail to `to` (or `DIGEST_TO`, or back to your connected Gmail).
 
-## Ask console
+## Cron
 
-Visit `https://<app>.vercel.app/`, enter your `CRON_SECRET` as the access key, and ask
-anything ("what's relevant in my industry this month?"). Answers cite which newsletters
-they drew from. It reads the stored summaries, so it stays cheap and fast.
+| Schedule | Route | Purpose |
+|----------|-------|---------|
+| Hourly | `/api/sync` | Pull new Gmail messages |
+| Daily 07:00 UTC | `/api/digest` | Send digest if interval elapsed |
 
-## How summarize-at-ingest works
-
-Every inbound email is stored raw, then condensed to an ≤80-word `summary` + `tags` with one
-cheap LLM call. Digests and the ask console run over those summaries instead of full bodies,
-keeping token cost tiny as the corpus grows. If summarization fails, the raw body is kept and
-used as a fallback. No embeddings yet — when the corpus gets large or you want sharper
-per-persona targeting, add an `embedding F32_BLOB` column (Turso has native vector search)
-and retrieve top-K per persona.
+Requires `CRON_SECRET` in Vercel (sent as Bearer token on cron invocations).
 
 ## Switching models
 
-| `LLM_PROVIDER` | default model | key |
-|---|---|---|
-| `claude` | `claude-sonnet-4-6` | `ANTHROPIC_API_KEY` |
-| `gemini` | `gemini-2.5-flash` | `GEMINI_API_KEY` |
-| `openrouter` | *(set `LLM_MODEL`)* | `OPENROUTER_API_KEY` |
+| `LLM_PROVIDER` | key |
+|---|---|
+| `gemini` | `GEMINI_API_KEY` |
+| `claude` | `ANTHROPIC_API_KEY` |
+| `openrouter` | `OPENROUTER_API_KEY` + `LLM_MODEL` |
 
 ## Gotchas
 
-- **Cron is UTC.** `0 7 * * 1` = Monday 07:00 UTC; edit `vercel.json` for your timezone.
-  Hobby allows once-per-day-or-less, so weekly is fine.
-- **Env / `vercel.json` change → redeploy** for it to take effect.
-- **`puppeteer-core` ↔ `@sparticuz/chromium` must be version-matched** (`^23` / `^131` here).
-  If PDFs fail, align their majors. `OUTPUT_FORMAT=html` skips Chromium entirely.
-- **Webhook does an LLM call now** (`maxDuration=30`); promotional/short emails (<120 chars)
-  are skipped to save calls.
-- **Storage swap:** reimplement the exports in `lib/db.js` to move off Turso.
-```
+- **OAuth testing mode** — personal Gmail apps in "Testing" need your Google account added as a test user on the OAuth consent screen.
+- **Refresh token** is stored in Turso after connect; optionally also set `GMAIL_REFRESH_TOKEN` in env.
+- **Re-auth after scope changes** — revoke the app at Google Account permissions and reconnect on Setup.
+- **Summarized mail** is moved to Gmail Trash (not permanently deleted). Set `GMAIL_KEEP_IN_INBOX=1` to disable.
+- **`OUTPUT_FORMAT=pdf`** needs Chromium on Vercel; use `html` if PDF generation fails.
+- **Re-auth** — revoke the app at [myaccount.google.com/permissions](https://myaccount.google.com/permissions) and reconnect if tokens break.

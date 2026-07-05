@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 const NAV = [
   { href: "/", label: "Home", icon: "🏠" },
   { href: "/newsletters", label: "Inbox", icon: "📬" },
-  { href: "/confirm", label: "Subscribe", icon: "✓" },
+  { href: "/confirm", label: "Setup", icon: "⚙️" },
 ];
 
 export default function AppShell({ children }) {

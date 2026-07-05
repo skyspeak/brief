@@ -3,6 +3,7 @@
 //   POST /api/confirmations  { key, id }  → mark as confirmed (clicked)
 import { recentEmailsWithBody, markEmailConfirmed } from "@/lib/db";
 import { listConfirmations } from "@/lib/confirmations";
+import { getGmailEmail } from "@/lib/gmail";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,8 +27,10 @@ export async function GET(req) {
     const manual = all.filter((c) => c.status === "manual");
     const confirmed = all.filter((c) => c.status === "confirmed");
 
+    const inbound = (await getGmailEmail()) || process.env.GMAIL_ADDRESS || null;
+
     return Response.json({
-      inbound_address: process.env.INBOUND_ADDRESS || null,
+      inbound_address: inbound,
       count: all.length,
       pending: pending.length,
       needs_manual: manual.length,
