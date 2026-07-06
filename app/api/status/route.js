@@ -60,9 +60,12 @@ export async function GET(req) {
     }
 
     const { counts, recent } = await emailStatus(10);
+    const chain = getProviderChain();
     let llm_model_resolved = null;
+    const llm_models_resolved = {};
     try {
-      llm_model_resolved = resolveModelFor(getProviderChain()[0]);
+      llm_model_resolved = resolveModelFor(chain[0]);
+      for (const p of chain) llm_models_resolved[p] = resolveModelFor(p);
     } catch {
       /* model resolution optional */
     }
@@ -74,7 +77,7 @@ export async function GET(req) {
 
     return Response.json({
       ok: counts.with_summary > 0,
-      env: { ...env, llm_model_resolved },
+      env: { ...env, llm_model_resolved, llm_models_resolved },
       counts,
       recent,
       gmail: {
