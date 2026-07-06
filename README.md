@@ -61,11 +61,13 @@ Requires `CRON_SECRET` in Vercel (sent as Bearer token on cron invocations).
 
 ## Switching models
 
-| `LLM_PROVIDER` | key |
-|---|---|
-| `gemini` | `GEMINI_API_KEY` |
-| `claude` | `ANTHROPIC_API_KEY` |
-| `openrouter` | `OPENROUTER_API_KEY` + `LLM_MODEL` |
+Default chain: **Gemini → OpenRouter** (set keys in Vercel; override with `LLM_PROVIDER` / `LLM_FALLBACK`).
+
+| Provider | Env var | Default model |
+|----------|---------|---------------|
+| `gemini` | `GEMINI_API_KEY` | `gemini-2.5-flash` |
+| `openrouter` | `OPENROUTER_API_KEY` + `LLM_MODEL` | `openrouter/free` |
+| `claude` | `ANTHROPIC_API_KEY` | only if `LLM_PROVIDER=claude` |
 
 ## Gotchas
 
