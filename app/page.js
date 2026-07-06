@@ -52,6 +52,42 @@ export default function Home() {
     return true;
   }
 
+  async function runBatchedExtract(endpoint, extraBody = {}, onProgress) {
+    const planRes = await fetch(endpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ key, action: "plan", ...extraBody }),
+    });
+    const planParsed = await parseApiResponse(planRes);
+    const plan = planParsed.data;
+    if (!plan) throw new Error(apiError(planParsed, "request failed"));
+    if (!planRes.ok) throw new Error(apiError(planParsed, plan.error || "request failed"));
+    if (plan.skipped) {
+      throw new Error(
+        plan.reason === "empty window"
+          ? "No newsletters in the digest window yet — sync inbox first."
+          : plan.reason || "nothing to process"
+      );
+    }
+    if (plan.error) throw new Error(plan.error);
+
+    const parts = [];
+    for (let i = 0; i < plan.batchCount; i++) {
+      onProgress?.(`Analyzing newsletters (${i + 1}/${plan.batchCount})…`);
+      const r = await fetch(endpoint, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ key, action: "extract", batchIndex: i, ...extraBody }),
+      });
+      const parsed = await parseApiResponse(r);
+      const d = parsed.data;
+      if (!d) throw new Error(apiError(parsed, "extract failed"));
+      if (!r.ok) throw new Error(apiError(parsed, d.error || "extract failed"));
+      parts.push(d.partial);
+    }
+    return { parts, plan };
+  }
+
   async function generateBriefing() {
     if (!requireKey()) return;
     setErr("");
@@ -60,20 +96,12 @@ export default function Home() {
     setBriefing(true);
 
     try {
-      setProgress("Cleaning newsletter HTML…");
-      const cleanRes = await fetch("/api/clean", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ key }),
-      });
-      const cleanParsed = await parseApiResponse(cleanRes);
-      if (!cleanRes.ok) throw new Error(apiError(cleanParsed, "clean failed"));
-
-      setProgress("Writing your briefing…");
+      const { parts, plan } = await runBatchedExtract("/api/briefing", {}, setProgress);
+      setProgress("Formatting briefing…");
       const briefRes = await fetch("/api/briefing", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ key, persona, clean: false }),
+        body: JSON.stringify({ key, action: "finish", parts, persona }),
       });
       const briefParsed = await parseApiResponse(briefRes);
       const b = briefParsed.data;
@@ -85,7 +113,7 @@ export default function Home() {
         sources: b.sources,
         persona: b.persona,
         source_count: b.source_count,
-        ignored: b.ignored,
+        ignored: b.ignored ?? plan.ignored,
       });
       setProgress("");
       await refreshPending();
@@ -129,10 +157,17 @@ export default function Home() {
     if (test) setTestSending(true);
     else setDigestSending(true);
     try {
+      setProgress(test ? "Starting test digest…" : "Starting digest…");
+      const { parts } = await runBatchedExtract(
+        "/api/digest",
+        { force: true, test },
+        setProgress
+      );
+      setProgress("Sending email…");
       const r = await fetch("/api/digest", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ key, force: true, test }),
+        body: JSON.stringify({ key, action: "send", parts, force: true, test }),
       });
       const parsed = await parseApiResponse(r);
       const d = parsed.data;
@@ -154,6 +189,7 @@ export default function Home() {
     } finally {
       setDigestSending(false);
       setTestSending(false);
+      setProgress("");
     }
   }
 
@@ -288,8 +324,8 @@ export default function Home() {
       <div className="card">
         <h2 className="card-title">Email digest</h2>
         <p className="field-hint" style={{ marginTop: 0 }}>
-          Uses up to <strong>40</strong> most recent newsletters in the lookback window (extras are
-          skipped). Good for a first run.
+          Uses up to <strong>40</strong> most recent newsletters (extras skipped). Analyzes in small
+          batches so it stays under Vercel&apos;s time limit — watch the progress line below.
         </p>
         <button
           type="button"
@@ -320,6 +356,9 @@ export default function Home() {
             "Send digest now"
           )}
         </button>
+        {progress && (digestSending || testSending) && (
+          <div className="alert alert-info" style={{ marginTop: "1rem", marginBottom: 0 }}>{progress}</div>
+        )}
       </div>
 
       {digestErr && <div className="alert alert-error">{digestErr}</div>}
