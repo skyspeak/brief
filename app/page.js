@@ -304,12 +304,12 @@ export default function Home() {
             style={{ marginBottom: "1rem" }}
           >
             {digestRes.sent
-              ? `Digest sent via Gmail from ${digestRes.sources} newsletter${digestRes.sources === 1 ? "" : "s"}.`
+              ? `Digest sent via Gmail (${digestRes.sources} newsletter${digestRes.sources === 1 ? "" : "s"}).`
               : digestRes.editions.find((e) => e.error)?.error || "Digest built but email was not sent."}
           </div>
           {digestRes.editions.map((edition) => (
-            <div key={edition.persona} style={{ marginBottom: edition.persona !== digestRes.editions.at(-1)?.persona ? "1.5rem" : 0 }}>
-              {digestRes.editions.length > 1 && (
+            <div key={edition.persona}>
+              {digestRes.editions.length > 1 && edition.label && (
                 <h3 className="card-title" style={{ fontSize: "0.9375rem", marginBottom: "0.75rem" }}>
                   {edition.label}
                 </h3>

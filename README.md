@@ -48,7 +48,7 @@ Without a label, sync pulls recent inbox mail matching the default query.
 
 ## Personas
 
-Edit `lib/personas.js` — each entry is `{ id, label, personaKey, to?, digest? }`. Digests send via Gmail to `to` (or `DIGEST_TO`, or back to your connected Gmail).
+Edit `lib/personas.js` — default recipient (`DEFAULT_DIGEST_TO` / `DIGEST_TO`). One email per run with neutral talking points, stats, and one insight per role.
 
 ## Cron
 
