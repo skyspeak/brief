@@ -61,7 +61,7 @@ Requires `CRON_SECRET` in Vercel (sent as Bearer token on cron invocations).
 
 ## Switching models
 
-Default chain: **Gemini → OpenRouter** (set keys in Vercel; override with `LLM_PROVIDER` / `LLM_FALLBACK`).
+Default: **Gemini only**. Set `LLM_FALLBACK=openrouter` if you want OpenRouter as backup (requires compatible [privacy settings](https://openrouter.ai/settings/privacy)).
 
 | Provider | Env var | Default model |
 |----------|---------|---------------|
