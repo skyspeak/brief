@@ -50,10 +50,11 @@ async function handleDigest(req, body = {}) {
 
   const url = new URL(req.url);
   const force = url.searchParams.get("force") === "1" || body.force === true;
+  const test = url.searchParams.get("test") === "1" || body.test === true;
   const format = url.searchParams.get("format") || body.format;
 
   try {
-    const result = await runDigest({ force });
+    const result = await runDigest({ force: force || test, test });
     if (format === "html") return digestHtmlResponse(result);
     return Response.json(result);
   } catch (e) {

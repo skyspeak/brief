@@ -3,6 +3,7 @@ import { allEmailsForBriefing } from "@/lib/db";
 import { cleanAllBodies } from "@/lib/clean-bodies";
 import { buildDigest } from "@/lib/issue";
 import { isConfirmationEmail } from "@/lib/confirmations";
+import { capNewslettersForDigest } from "@/lib/digest";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,14 +34,17 @@ export async function POST(req) {
       return Response.json({ error: "no newsletters in corpus yet" }, { status: 400 });
     }
 
+    const { emails, total, ignored } = capNewslettersForDigest(rows);
     const persona = body.persona || "neutral";
-    const markdown = await buildDigest(rows, persona);
+    const markdown = await buildDigest(emails, persona);
 
     return Response.json({
       markdown,
       persona,
-      source_count: rows.length,
-      sources: rows.map((r, i) => ({
+      source_count: emails.length,
+      total_in_corpus: total,
+      ignored,
+      sources: emails.map((r, i) => ({
         n: i + 1,
         subject: r.subject || "(no subject)",
         sender: r.sender,

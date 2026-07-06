@@ -3,6 +3,7 @@
 //   /api/preview?key=<CRON_SECRET>&format=pdf → download PDF
 import { recentEmails } from "@/lib/db";
 import { buildDigest } from "@/lib/issue";
+import { capNewslettersForDigest } from "@/lib/digest";
 import { markdownToEmailHtml } from "@/lib/markdown";
 import { htmlToPdf } from "@/lib/pdf";
 
@@ -21,7 +22,7 @@ export async function GET(req) {
   try {
     const windowDays = Number(process.env.DIGEST_WINDOW_DAYS || process.env.DIGEST_INTERVAL_DAYS || 3);
     const since = Math.floor(Date.now() / 1000) - windowDays * 86400;
-    const emails = await recentEmails(since);
+    const emails = capNewslettersForDigest(await recentEmails(since)).emails;
     if (!emails.length) return new Response("No emails in window yet.");
 
     const persona = url.searchParams.get("persona") || "general";

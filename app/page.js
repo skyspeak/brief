@@ -27,6 +27,7 @@ export default function Home() {
   const [err, setErr] = useState("");
   const [showAsk, setShowAsk] = useState(false);
   const [digestSending, setDigestSending] = useState(false);
+  const [testSending, setTestSending] = useState(false);
   const [digestRes, setDigestRes] = useState(null);
   const [digestErr, setDigestErr] = useState("");
   const [syncing, setSyncing] = useState(false);
@@ -84,6 +85,7 @@ export default function Home() {
         sources: b.sources,
         persona: b.persona,
         source_count: b.source_count,
+        ignored: b.ignored,
       });
       setProgress("");
       await refreshPending();
@@ -120,16 +122,17 @@ export default function Home() {
     }
   }
 
-  async function forceSendDigest() {
+  async function sendDigestRequest({ test = false } = {}) {
     if (!requireKey()) return;
     setDigestErr("");
     setDigestRes(null);
-    setDigestSending(true);
+    if (test) setTestSending(true);
+    else setDigestSending(true);
     try {
       const r = await fetch("/api/digest", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ key, force: true }),
+        body: JSON.stringify({ key, force: true, test }),
       });
       const parsed = await parseApiResponse(r);
       const d = parsed.data;
@@ -139,9 +142,9 @@ export default function Home() {
       if (d.skipped) {
         throw new Error(
           d.reason === "empty window"
-            ? "No newsletters in the digest window yet."
+            ? "No newsletters in the digest window yet — sync inbox first."
             : d.reason === "interval"
-              ? "Digest interval not elapsed — force send should bypass this; try again."
+              ? "Digest interval not elapsed — use Send test digest or force send."
               : `Digest skipped (${d.reason || "unknown"}).`
         );
       }
@@ -150,7 +153,16 @@ export default function Home() {
       setDigestErr(e.message);
     } finally {
       setDigestSending(false);
+      setTestSending(false);
     }
+  }
+
+  async function forceSendDigest() {
+    return sendDigestRequest({ test: false });
+  }
+
+  async function sendTestDigest() {
+    return sendDigestRequest({ test: true });
   }
 
   async function ask() {
@@ -276,14 +288,29 @@ export default function Home() {
       <div className="card">
         <h2 className="card-title">Email digest</h2>
         <p className="field-hint" style={{ marginTop: 0 }}>
-          Send the scheduled digest from your Gmail and preview it here. Uses newsletters from the last few
-          days (same as the cron job).
+          Uses up to <strong>40</strong> most recent newsletters in the lookback window (extras are
+          skipped). Good for a first run.
         </p>
+        <button
+          type="button"
+          className="btn btn-primary btn-block"
+          onClick={sendTestDigest}
+          disabled={testSending || digestSending || briefing}
+          style={{ marginBottom: "0.75rem" }}
+        >
+          {testSending ? (
+            <>
+              <span className="spinner" aria-hidden /> Sending test digest…
+            </>
+          ) : (
+            "Send test digest → skyspeak@gmail.com"
+          )}
+        </button>
         <button
           type="button"
           className="btn btn-secondary btn-block"
           onClick={forceSendDigest}
-          disabled={digestSending || briefing}
+          disabled={digestSending || testSending || briefing}
         >
           {digestSending ? (
             <>
@@ -304,7 +331,9 @@ export default function Home() {
             style={{ marginBottom: "1rem" }}
           >
             {digestRes.sent
-              ? `Digest sent via Gmail (${digestRes.sources} newsletter${digestRes.sources === 1 ? "" : "s"}).`
+              ? digestRes.test
+                ? `Test digest sent to ${digestRes.sent_to || "skyspeak@gmail.com"} (${digestRes.sources} newsletter${digestRes.sources === 1 ? "" : "s"}${digestRes.ignored ? `, ${digestRes.ignored} skipped` : ""}).`
+                : `Digest sent via Gmail (${digestRes.sources} newsletter${digestRes.sources === 1 ? "" : "s"}${digestRes.ignored ? `, ${digestRes.ignored} skipped` : ""}).`
               : digestRes.editions.find((e) => e.error)?.error || "Digest built but email was not sent."}
           </div>
           {digestRes.editions.map((edition) => (
@@ -364,6 +393,7 @@ export default function Home() {
           {res.source_count && (
             <div className="alert alert-success" style={{ marginBottom: "1rem" }}>
               Briefing from {res.source_count} newsletter{res.source_count === 1 ? "" : "s"}
+              {res.ignored ? ` (${res.ignored} older skipped, max 40)` : ""}
             </div>
           )}
           <div className="result-body">{res.answer}</div>
