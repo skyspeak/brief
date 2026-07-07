@@ -75,5 +75,5 @@ Default: **Gemini only**. OpenRouter fallback is off unless you set both `LLM_FA
 - **Refresh token** is stored in Turso after connect; optionally also set `GMAIL_REFRESH_TOKEN` in env.
 - **Re-auth after scope changes** — revoke the app at Google Account permissions and reconnect on Setup.
 - **Summarized mail** is moved to Gmail Trash (not permanently deleted). Set `GMAIL_KEEP_IN_INBOX=1` to disable.
-- **`OUTPUT_FORMAT=pdf`** needs Chromium on Vercel; use `html` if PDF generation fails.
+- **`OUTPUT_FORMAT=text`** (default) sends plain-text digests. Use `html` or `pdf` if you want styled email.
 - **Re-auth** — revoke the app at [myaccount.google.com/permissions](https://myaccount.google.com/permissions) and reconnect if tokens break.
