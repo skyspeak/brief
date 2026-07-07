@@ -65,7 +65,7 @@ Default: **Gemini only**. Set `LLM_FALLBACK=openrouter` if you want OpenRouter a
 
 | Provider | Env var | Default model |
 |----------|---------|---------------|
-| `gemini` | `GEMINI_API_KEY` | `gemini-2.5-flash` |
+| `gemini` | `GEMINI_API_KEY` | `gemini-2.0-flash` |
 | `openrouter` | `OPENROUTER_API_KEY` + `LLM_MODEL` | `openrouter/free` |
 | `claude` | `ANTHROPIC_API_KEY` | only if `LLM_PROVIDER=claude` |
 
