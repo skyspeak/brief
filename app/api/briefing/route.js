@@ -28,7 +28,7 @@ export async function POST(req) {
 
   try {
     if (action === "plan") {
-      const { emails, total, ignored } = await getBriefingEmails();
+      const { emails, total, ignored, windowDays } = await getBriefingEmails();
       if (!emails.length) {
         return Response.json({ error: "no newsletters in digest window yet" }, { status: 400 });
       }
