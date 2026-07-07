@@ -5,6 +5,7 @@ import {
   planDigestEmails,
   extractDigestEmailsBatch,
   sendDigestFromParts,
+  sendDigestFromSavedSummaries,
 } from "@/lib/digest";
 import { markdownToEmailHtml } from "@/lib/markdown";
 
@@ -87,6 +88,15 @@ async function handleDigest(req, body = {}) {
         batchCount: batch.batchCount,
         batchSize: batch.batchSize,
       });
+    }
+
+    if (action === "send-saved") {
+      const result = await sendDigestFromSavedSummaries({
+        test,
+        force: force || test || true,
+      });
+      if (format === "html") return digestHtmlResponse(result);
+      return Response.json(result);
     }
 
     if (action === "send") {

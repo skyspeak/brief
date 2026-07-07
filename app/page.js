@@ -27,6 +27,7 @@ export default function Home() {
   const [err, setErr] = useState("");
   const [showAsk, setShowAsk] = useState(false);
   const [digestSending, setDigestSending] = useState(false);
+  const [savedSending, setSavedSending] = useState(false);
   const [testSending, setTestSending] = useState(false);
   const [digestRes, setDigestRes] = useState(null);
   const [digestErr, setDigestErr] = useState("");
@@ -147,6 +148,32 @@ export default function Home() {
       setErr(e.message);
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function forceSendSavedSummaries() {
+    if (!requireKey()) return;
+    setDigestErr("");
+    setDigestRes(null);
+    setSavedSending(true);
+    try {
+      setProgress("Sending saved summaries…");
+      const r = await fetch("/api/digest", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ key, action: "send-saved", force: true }),
+      });
+      const parsed = await parseApiResponse(r);
+      const d = parsed.data;
+      if (!d) throw new Error(apiError(parsed, "digest failed"));
+      if (d.error) throw new Error(d.error);
+      if (!r.ok) throw new Error(apiError(parsed, "digest failed"));
+      setDigestRes(d);
+    } catch (e) {
+      setDigestErr(e.message);
+    } finally {
+      setSavedSending(false);
+      setProgress("");
     }
   }
 
@@ -330,9 +357,25 @@ export default function Home() {
         <button
           type="button"
           className="btn btn-primary btn-block"
-          onClick={sendTestDigest}
-          disabled={testSending || digestSending || briefing}
+          onClick={forceSendSavedSummaries}
+          disabled={savedSending || digestSending || testSending || briefing}
           style={{ marginBottom: "0.75rem" }}
+        >
+          {savedSending ? (
+            <>
+              <span className="spinner" aria-hidden /> Sending saved summaries…
+            </>
+          ) : (
+            "Force send saved summaries"
+          )}
+        </button>
+        <button
+          type="button"
+          className="btn btn-primary btn-block"
+          onClick={sendTestDigest}
+          disabled={testSending || digestSending || savedSending || briefing}
+          style={{ marginBottom: "0.75rem" }}
+       
         >
           {testSending ? (
             <>
@@ -346,7 +389,7 @@ export default function Home() {
           type="button"
           className="btn btn-secondary btn-block"
           onClick={forceSendDigest}
-          disabled={digestSending || testSending || briefing}
+          disabled={digestSending || testSending || savedSending || briefing}
         >
           {digestSending ? (
             <>
@@ -356,7 +399,7 @@ export default function Home() {
             "Send digest now"
           )}
         </button>
-        {progress && (digestSending || testSending) && (
+        {progress && (digestSending || testSending || savedSending) && (
           <div className="alert alert-info" style={{ marginTop: "1rem", marginBottom: 0 }}>{progress}</div>
         )}
       </div>
@@ -370,7 +413,9 @@ export default function Home() {
             style={{ marginBottom: "1rem" }}
           >
             {digestRes.sent
-              ? digestRes.test
+              ? digestRes.from_saved_summaries
+                ? `Saved-summary digest sent to ${digestRes.sent_to || "recipient"} (${digestRes.sources} newsletter${digestRes.sources === 1 ? "" : "s"}).`
+                : digestRes.test
                 ? `Test digest sent to ${digestRes.sent_to || "skyspeak@gmail.com"} (${digestRes.sources} newsletter${digestRes.sources === 1 ? "" : "s"}${digestRes.ignored ? `, ${digestRes.ignored} skipped` : ""}).`
                 : `Digest sent via Gmail (${digestRes.sources} newsletter${digestRes.sources === 1 ? "" : "s"}${digestRes.ignored ? `, ${digestRes.ignored} skipped` : ""}).`
               : digestRes.editions.find((e) => e.error)?.error || "Digest built but email was not sent."}
