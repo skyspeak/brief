@@ -44,10 +44,8 @@ function pipelineHint(counts, env) {
   if (!env.gmail_connected) return "Connect Gmail on the Setup page — newsletters are read from that inbox.";
   if (counts.total === 0) return "No emails synced yet — subscribe newsletters to your Gmail address, then Sync inbox.";
   if (counts.with_body === 0) return "Emails stored but bodies empty — try Sync inbox again.";
-  if (counts.with_summary === 0)
-    return "Bodies stored but no summaries — check GEMINI_API_KEY in Vercel.";
-  if (counts.with_summary < counts.total)
-    return "Some emails lack summaries — tap Read on Inbox or run Generate briefing.";
+  if (counts.with_body > 0 && counts.digested === 0)
+    return "Ready — send digest from Home to synthesize the digest window into insights with source URLs.";
   return "Pipeline healthy.";
 }
 
@@ -83,7 +81,7 @@ export async function GET(req) {
     const lastSync = await getLastGmailSync();
 
     return Response.json({
-      ok: counts.with_summary > 0,
+      ok: counts.with_body > 0,
       env: { ...env, llm_model_resolved, llm_models_resolved },
       counts,
       recent,

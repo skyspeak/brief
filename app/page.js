@@ -22,26 +22,29 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [briefing, setBriefing] = useState(false);
   const [progress, setProgress] = useState("");
-  const [pendingCount, setPendingCount] = useState(null);
+  const [windowCount, setWindowCount] = useState(null);
+  const [windowDays, setWindowDays] = useState(3);
   const [res, setRes] = useState(null);
   const [err, setErr] = useState("");
   const [showAsk, setShowAsk] = useState(false);
   const [digestSending, setDigestSending] = useState(false);
-  const [savedSending, setSavedSending] = useState(false);
   const [testSending, setTestSending] = useState(false);
   const [digestRes, setDigestRes] = useState(null);
   const [digestErr, setDigestErr] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState("");
 
-  async function refreshPending() {
+  async function refreshWindowCount() {
     if (!key.trim()) return;
     try {
       const r = await fetch(`/api/newsletters?key=${encodeURIComponent(key)}`);
       const parsed = await parseApiResponse(r);
-      if (parsed.data && r.ok) setPendingCount(parsed.data.pending_count);
+      if (parsed.data && r.ok) {
+        setWindowCount(parsed.data.in_digest_window);
+        if (parsed.data.window_days) setWindowDays(parsed.data.window_days);
+      }
     } catch {
-      setPendingCount(null);
+      setWindowCount(null);
     }
   }
 
@@ -114,10 +117,11 @@ export default function Home() {
         sources: b.sources,
         persona: b.persona,
         source_count: b.source_count,
+        window_days: b.window_days ?? plan.window_days,
         ignored: b.ignored ?? plan.ignored,
       });
       setProgress("");
-      await refreshPending();
+      await refreshWindowCount();
     } catch (e) {
       setErr(e.message);
       setProgress("");
@@ -143,37 +147,11 @@ export default function Home() {
       if (!r.ok) throw new Error(apiError(parsed, "sync failed"));
       const trashed = d.trashed ? `, ${d.trashed} moved to Gmail Trash` : "";
       setSyncMsg(`Synced ${d.ingested} new newsletter${d.ingested === 1 ? "" : "s"}${trashed}.`);
-      await refreshPending();
+      await refreshWindowCount();
     } catch (e) {
       setErr(e.message);
     } finally {
       setSyncing(false);
-    }
-  }
-
-  async function forceSendSavedSummaries() {
-    if (!requireKey()) return;
-    setDigestErr("");
-    setDigestRes(null);
-    setSavedSending(true);
-    try {
-      setProgress("Sending saved summaries…");
-      const r = await fetch("/api/digest", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ key, action: "send-saved", force: true }),
-      });
-      const parsed = await parseApiResponse(r);
-      const d = parsed.data;
-      if (!d) throw new Error(apiError(parsed, "digest failed"));
-      if (d.error) throw new Error(d.error);
-      if (!r.ok) throw new Error(apiError(parsed, "digest failed"));
-      setDigestRes(d);
-    } catch (e) {
-      setDigestErr(e.message);
-    } finally {
-      setSavedSending(false);
-      setProgress("");
     }
   }
 
@@ -281,17 +259,17 @@ export default function Home() {
           </li>
           <li className="step">
             <span className="step-num">2</span>
-            <span>Sync inbox, then tap Generate briefing</span>
+            <span>Sync inbox, then send digest or generate briefing</span>
           </li>
           <li className="step">
             <span className="step-num">3</span>
-            <span>Get Talking Points, Stats, and Insights across all synced newsletters</span>
+            <span>Get cross-newsletter insights from the last {windowDays} days, with source URLs</span>
           </li>
         </ol>
       </div>
 
       <div className="card">
-        <AccessKeyField value={key} onChange={setKey} onBlur={refreshPending} />
+        <AccessKeyField value={key} onChange={setKey} onBlur={refreshWindowCount} />
 
         <div className="field">
           <label className="field-label" htmlFor="persona">
@@ -312,10 +290,10 @@ export default function Home() {
           <span className="field-hint">Filters the briefing to what matters for that role.</span>
         </div>
 
-        {pendingCount !== null && pendingCount > 0 && (
+        {windowCount !== null && windowCount > 0 && (
           <div className="alert alert-info">
-            {pendingCount} newsletter{pendingCount === 1 ? "" : "s"} ready — generate briefing to
-            extract talking points, stats, and insights.
+            {windowCount} newsletter{windowCount === 1 ? "" : "s"} in the last {windowDays}-day window —
+            send digest for cross-newsletter insights with source links.
           </div>
         )}
 
@@ -351,31 +329,15 @@ export default function Home() {
       <div className="card">
         <h2 className="card-title">Email digest</h2>
         <p className="field-hint" style={{ marginTop: 0 }}>
-          <strong>Send digest now</strong> runs LLM extraction for sharp, numbered insights.
-          <strong> Force send saved summaries</strong> is a fast fallback from Inbox previews (lower quality).
+          Reads all newsletters in the <strong>{windowDays}-day window</strong> together (not one-by-one).
+          Each insight includes the article URL when available.
         </p>
         <button
           type="button"
           className="btn btn-primary btn-block"
-          onClick={forceSendSavedSummaries}
-          disabled={savedSending || digestSending || testSending || briefing}
-          style={{ marginBottom: "0.75rem" }}
-        >
-          {savedSending ? (
-            <>
-              <span className="spinner" aria-hidden /> Sending saved summaries…
-            </>
-          ) : (
-            "Force send saved summaries"
-          )}
-        </button>
-        <button
-          type="button"
-          className="btn btn-primary btn-block"
           onClick={sendTestDigest}
-          disabled={testSending || digestSending || savedSending || briefing}
+          disabled={testSending || digestSending || briefing}
           style={{ marginBottom: "0.75rem" }}
-       
         >
           {testSending ? (
             <>
@@ -389,7 +351,7 @@ export default function Home() {
           type="button"
           className="btn btn-secondary btn-block"
           onClick={forceSendDigest}
-          disabled={digestSending || testSending || savedSending || briefing}
+          disabled={digestSending || testSending || briefing}
         >
           {digestSending ? (
             <>
@@ -399,7 +361,7 @@ export default function Home() {
             "Send digest now"
           )}
         </button>
-        {progress && (digestSending || testSending || savedSending) && (
+        {progress && (digestSending || testSending) && (
           <div className="alert alert-info" style={{ marginTop: "1rem", marginBottom: 0 }}>{progress}</div>
         )}
       </div>
@@ -413,9 +375,7 @@ export default function Home() {
             style={{ marginBottom: "1rem" }}
           >
             {digestRes.sent
-              ? digestRes.from_saved_summaries
-                ? `Saved-summary digest sent to ${digestRes.sent_to || "recipient"} (${digestRes.sources} newsletter${digestRes.sources === 1 ? "" : "s"}).`
-                : digestRes.test
+              ? digestRes.test
                 ? `Test digest sent to ${digestRes.sent_to || "skyspeak@gmail.com"} (${digestRes.sources} newsletter${digestRes.sources === 1 ? "" : "s"}${digestRes.ignored ? `, ${digestRes.ignored} skipped` : ""}).`
                 : `Digest sent via Gmail (${digestRes.sources} newsletter${digestRes.sources === 1 ? "" : "s"}${digestRes.ignored ? `, ${digestRes.ignored} skipped` : ""}).`
               : digestRes.editions.find((e) => e.error)?.error || "Digest built but email was not sent."}
@@ -476,7 +436,7 @@ export default function Home() {
         <div className="result">
           {res.source_count && (
             <div className="alert alert-success" style={{ marginBottom: "1rem" }}>
-              Briefing from {res.source_count} newsletter{res.source_count === 1 ? "" : "s"}
+              Briefing from {res.source_count} newsletter{res.source_count === 1 ? "" : "s"} in the {res.window_days || windowDays}-day window
               {res.ignored ? ` (${res.ignored} older skipped, max 40)` : ""}
             </div>
           )}

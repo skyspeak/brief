@@ -30,12 +30,13 @@ export async function POST(req) {
     if (action === "plan") {
       const { emails, total, ignored } = await getBriefingEmails();
       if (!emails.length) {
-        return Response.json({ error: "no newsletters in corpus yet" }, { status: 400 });
+        return Response.json({ error: "no newsletters in digest window yet" }, { status: 400 });
       }
       return Response.json({
         ...planDigestEmails(emails),
-        total_in_corpus: total,
+        total_in_window: total,
         ignored,
+        window_days: windowDays,
       });
     }
 
@@ -55,19 +56,20 @@ export async function POST(req) {
     }
 
     if (action === "finish") {
-      const { emails, total, ignored } = await getBriefingEmails();
+      const { emails, total, ignored, windowDays } = await getBriefingEmails();
       const parts = body.parts;
       if (!Array.isArray(parts) || !parts.length) {
         return Response.json({ error: "parts required" }, { status: 400 });
       }
       const persona = body.persona || "neutral";
-      const markdown = finalizeDigestMarkdown(parts, { emails });
+      const markdown = finalizeDigestMarkdown(parts, { emails, windowDays });
       return Response.json({
         markdown,
         persona,
         source_count: emails.length,
         total_in_corpus: total,
         ignored,
+        window_days: windowDays,
         sources: emails.map((r, i) => ({
           n: i + 1,
           subject: r.subject || "(no subject)",
@@ -80,9 +82,9 @@ export async function POST(req) {
       await cleanAllBodies();
     }
 
-    const { emails, total, ignored } = await getBriefingEmails();
+    const { emails, total, ignored, windowDays } = await getBriefingEmails();
     if (!emails.length) {
-      return Response.json({ error: "no newsletters in corpus yet" }, { status: 400 });
+      return Response.json({ error: "no newsletters in digest window yet" }, { status: 400 });
     }
 
     const batchCount = planDigestEmails(emails).batchCount;
@@ -93,7 +95,7 @@ export async function POST(req) {
     }
 
     const persona = body.persona || "neutral";
-    const markdown = finalizeDigestMarkdown(parts, { emails });
+    const markdown = finalizeDigestMarkdown(parts, { emails, windowDays });
 
     return Response.json({
       markdown,
@@ -101,6 +103,7 @@ export async function POST(req) {
       source_count: emails.length,
       total_in_corpus: total,
       ignored,
+      window_days: windowDays,
       sources: emails.map((r, i) => ({
         n: i + 1,
         subject: r.subject || "(no subject)",

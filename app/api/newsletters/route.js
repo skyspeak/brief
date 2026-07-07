@@ -1,6 +1,7 @@
-// app/api/newsletters/route.js — neutral browse: all newsletters + extract status.
+// app/api/newsletters/route.js — neutral browse: newsletters in digest window.
 //   GET /api/newsletters?key=<CRON_SECRET>
-import { listNewsletters, unsummarizedEmails } from "@/lib/db";
+import { listNewsletters } from "@/lib/db";
+import { getDigestWindowEmails } from "@/lib/digest";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,11 +19,12 @@ export async function GET(req) {
 
   try {
     const newsletters = await listNewsletters(100);
-    const pending = await unsummarizedEmails(100);
+    const { emails, windowDays, total } = await getDigestWindowEmails();
     return Response.json({
       count: newsletters.length,
-      with_summary: newsletters.filter((n) => n.has_summary).length,
-      pending_count: pending.length,
+      in_digest_window: emails.length,
+      window_days: windowDays,
+      total_in_window: total,
       newsletters,
     });
   } catch (e) {

@@ -1,7 +1,7 @@
 # Newsletter Magazine
 
-A serverless pipeline that connects to your **personal Gmail**, summarizes each newsletter as it arrives,
-and periodically distills them into **one tailored digest per persona** emailed from your Gmail account.
+A serverless pipeline that connects to your **personal Gmail**, syncs newsletters,
+and distills them into **one cross-newsletter digest** emailed from your Gmail account.
 Plus an on-demand **briefing console** and ask-over-corpus. Deploys to Vercel.
 
 ```
