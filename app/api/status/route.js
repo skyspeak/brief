@@ -27,18 +27,25 @@ async function envCheck() {
     llm_chain: llm.chain,
     llm_model: process.env.LLM_MODEL || null,
     llm_ok: llm.ok,
+    llm_active_chain: llm.active_chain,
+    gemini_configured: llm.gemini_configured,
+    openrouter_configured: llm.openrouter_configured,
     cron_secret: !!process.env.CRON_SECRET,
   };
 }
 
 function pipelineHint(counts, env) {
   if (!env.turso) return "Set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN in Vercel.";
+  if (!env.gemini_configured && !env.openrouter_configured) {
+    return "Set GEMINI_API_KEY in Vercel — LLM is not configured.";
+  }
+  if (!env.llm_ok) return "LLM chain has no configured providers — check GEMINI_API_KEY in Vercel.";
   if (!env.gmail_oauth) return "Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, then connect Gmail on Setup.";
   if (!env.gmail_connected) return "Connect Gmail on the Setup page — newsletters are read from that inbox.";
   if (counts.total === 0) return "No emails synced yet — subscribe newsletters to your Gmail address, then Sync inbox.";
   if (counts.with_body === 0) return "Emails stored but bodies empty — try Sync inbox again.";
   if (counts.with_summary === 0)
-    return "Bodies stored but no summaries — check GEMINI_API_KEY (primary) and OPENROUTER_API_KEY (fallback).";
+    return "Bodies stored but no summaries — check GEMINI_API_KEY in Vercel.";
   if (counts.with_summary < counts.total)
     return "Some emails lack summaries — tap Read on Inbox or run Generate briefing.";
   return "Pipeline healthy.";
