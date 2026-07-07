@@ -351,8 +351,8 @@ export default function Home() {
       <div className="card">
         <h2 className="card-title">Email digest</h2>
         <p className="field-hint" style={{ marginTop: 0 }}>
-          Uses up to <strong>40</strong> most recent newsletters (extras skipped). Analyzes in small
-          batches so it stays under Vercel&apos;s time limit — watch the progress line below.
+          <strong>Send digest now</strong> runs LLM extraction for sharp, numbered insights.
+          <strong> Force send saved summaries</strong> is a fast fallback from Inbox previews (lower quality).
         </p>
         <button
           type="button"

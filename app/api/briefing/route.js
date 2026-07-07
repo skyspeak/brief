@@ -61,7 +61,7 @@ export async function POST(req) {
         return Response.json({ error: "parts required" }, { status: 400 });
       }
       const persona = body.persona || "neutral";
-      const markdown = finalizeDigestMarkdown(parts);
+      const markdown = finalizeDigestMarkdown(parts, { emails });
       return Response.json({
         markdown,
         persona,
@@ -93,7 +93,7 @@ export async function POST(req) {
     }
 
     const persona = body.persona || "neutral";
-    const markdown = finalizeDigestMarkdown(parts);
+    const markdown = finalizeDigestMarkdown(parts, { emails });
 
     return Response.json({
       markdown,
