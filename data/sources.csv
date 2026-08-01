@@ -1,19 +1,19 @@
 name,category,delivery,feed_url,site_url,signup_url,weight,max_items,confidence,notes
 Stratechery (free posts),enterprise,rss,https://stratechery.com/feed/,https://stratechery.com,https://stratechery.com/membership/,3,5,high,Free tier only in the public feed
 Benedict Evans,tech,rss,https://www.ben-evans.com/benedictevans?format=rss,https://www.ben-evans.com,https://www.ben-evans.com/newsletter,3,5,high,Squarespace format=rss
-Platformer,tech,rss,https://www.platformer.news/feed,https://www.platformer.news,https://www.platformer.news,2,8,pattern,Ghost feed convention
+Platformer,tech,rss,https://www.platformer.news/feed,https://www.platformer.news,https://www.platformer.news,2,8,verified,Ghost feed convention
 Simon Willison,ai,rss,https://simonwillison.net/atom/everything/,https://simonwillison.net,,3,10,high,High signal on model releases
-Latent Space,ai,rss,https://www.latent.space/feed,https://www.latent.space,https://www.latent.space,2,6,pattern,Substack
-Interconnects,ai,rss,https://www.interconnects.ai/feed,https://www.interconnects.ai,https://www.interconnects.ai,2,6,pattern,Substack; Nathan Lambert
+Latent Space,ai,rss,https://www.latent.space/feed,https://www.latent.space,https://www.latent.space,2,6,verified,Substack
+Interconnects,ai,rss,https://www.interconnects.ai/feed,https://www.interconnects.ai,https://www.interconnects.ai,2,6,verified,Substack; Nathan Lambert
 Import AI,ai,rss,https://jack-clark.net/feed/,https://jack-clark.net,https://jack-clark.net,3,4,high,WordPress; Jack Clark
-The Gradient,ai,rss,https://thegradientpub.substack.com/feed,https://thegradient.pub,,1,5,pattern,Substack
+The Gradient,ai,rss,https://thegradientpub.substack.com/feed,https://thegradient.pub,,1,5,verified,Substack
 SemiAnalysis,ai,rss,https://semianalysis.com/feed/,https://semianalysis.com,,3,5,high,Compute and supply chain
 Hugging Face Blog,ai,rss,https://huggingface.co/blog/feed.xml,https://huggingface.co/blog,,1,8,high,Open model releases
-OpenAI Blog,ai,rss,https://openai.com/blog/rss.xml,https://openai.com/blog,,2,6,check,Path has moved before; verify
-Google DeepMind Blog,ai,rss,https://deepmind.google/blog/rss.xml,https://deepmind.google/discover/blog/,,1,6,check,Verify with discovery script
-Anthropic News,ai,rss,,https://www.anthropic.com/news,,2,6,check,No documented feed; discovery script may find one
-Ben's Bites,ai,rss,https://bensbites.beehiiv.com/feed,https://www.bensbites.com,https://www.bensbites.com,1,5,check,beehiiv feed path varies
-The Batch (DeepLearning.AI),ai,rss,https://www.deeplearning.ai/the-batch/feed/,https://www.deeplearning.ai/the-batch/,https://www.deeplearning.ai/the-batch/,1,4,check,Verify
+OpenAI Blog,ai,rss,https://openai.com/blog/rss.xml,https://openai.com/blog,,2,6,verified,Path has moved before; verify
+Google DeepMind Blog,ai,rss,https://deepmind.google/blog/rss.xml,https://deepmind.google/discover/blog/,,1,6,verified,Verify with discovery script
+Anthropic News,ai,email,,https://www.anthropic.com/news,,2,6,n/a,No documented feed; discovery script may find one; no feed found (no_url); no working public feed; use Gmail/email path
+Ben's Bites,ai,rss,https://www.bensbites.com/feed,https://www.bensbites.com,https://www.bensbites.com,1,5,verified,beehiiv feed path varies
+The Batch (DeepLearning.AI),ai,email,,https://www.deeplearning.ai/the-batch/,https://www.deeplearning.ai/the-batch/,1,4,n/a,Verify; no feed found (http_404); no working public feed; use Gmail/email path
 The Neuron,ai,email,,https://www.theneurondaily.com,https://www.theneurondaily.com,1,4,n/a,Email only
 Superhuman AI,ai,email,,https://www.superhuman.ai,https://www.superhuman.ai,1,4,n/a,Email only
 TLDR AI,ai,email,,https://tldr.tech/ai,https://tldr.tech/ai,1,4,n/a,Email only; high volume
@@ -24,15 +24,15 @@ MIT Technology Review,tech,rss,https://www.technologyreview.com/feed/,https://ww
 Wired,tech,rss,https://www.wired.com/feed/rss,https://www.wired.com,,1,8,high,
 The Register,tech,rss,https://www.theregister.com/headlines.atom,https://www.theregister.com,,1,10,high,Enterprise IT skew
 Hacker News front page,tech,rss,https://hnrss.org/frontpage?points=150,https://news.ycombinator.com,,2,15,high,Third-party bridge; points filter tunes volume
-Sifted,tech,rss,https://sifted.eu/feed,https://sifted.eu,,1,6,pattern,European startups
-Semafor Technology,tech,rss,https://www.semafor.com/rss.xml,https://www.semafor.com/section/tech,,1,6,check,Section-specific feed may exist
-The Pragmatic Engineer,tech,rss,https://newsletter.pragmaticengineer.com/feed,https://newsletter.pragmaticengineer.com,,2,5,pattern,Substack; partial free
+Sifted,tech,rss,https://sifted.eu/feed,https://sifted.eu,,1,6,verified,European startups
+Semafor Technology,tech,rss,https://www.semafor.com/rss.xml,https://www.semafor.com/section/tech,,1,6,verified,Section-specific feed may exist
+The Pragmatic Engineer,tech,rss,https://newsletter.pragmaticengineer.com/feed,https://newsletter.pragmaticengineer.com,,2,5,verified,Substack; partial free
 The Information,tech,email,,https://www.theinformation.com,https://www.theinformation.com,3,4,n/a,Paid; no public feed
 Marginal Revolution,finance,rss,https://marginalrevolution.com/feed,https://marginalrevolution.com,,1,10,high,Economics
 Calculated Risk,finance,rss,https://www.calculatedriskblog.com/feeds/posts/default,https://www.calculatedriskblog.com,,1,8,high,Blogger feed
-Net Interest,finance,rss,https://www.netinterest.co/feed,https://www.netinterest.co,,2,4,pattern,Substack; financial sector
-The Diff,finance,rss,https://www.thediff.co/feed,https://www.thediff.co,,3,5,check,Partially paywalled
-Not Boring,finance,rss,https://www.notboring.co/feed,https://www.notboring.co,,1,4,pattern,Substack
+Net Interest,finance,rss,https://www.netinterest.co/feed,https://www.netinterest.co,,2,4,verified,Substack; financial sector
+The Diff,finance,rss,https://www.thediff.co/feed,https://www.thediff.co,,3,5,verified,Partially paywalled
+Not Boring,finance,rss,https://www.notboring.co/feed,https://www.notboring.co,,1,4,verified,Substack
 Crunchbase News,finance,rss,https://news.crunchbase.com/feed/,https://news.crunchbase.com,,2,8,high,Funding rounds
 a16z,finance,rss,https://a16z.com/feed/,https://a16z.com,,1,6,high,
 Money Stuff (Matt Levine),finance,email,,https://www.bloomberg.com/opinion/authors/ARbTQlRLRjE/matthew-s-levine,https://www.bloomberg.com/account/newsletters/money-stuff,3,4,n/a,Bloomberg; email only
@@ -42,16 +42,16 @@ Term Sheet (Fortune),finance,email,,https://fortune.com/newsletter/termsheet/,ht
 The Daily Upside,finance,email,,https://www.thedailyupside.com,https://www.thedailyupside.com,1,4,n/a,Email only
 Morning Brew,finance,email,,https://www.morningbrew.com,https://www.morningbrew.com,1,3,n/a,Already subscribed
 Exec Sum,finance,email,,https://www.execsum.co,https://www.execsum.co,1,3,n/a,Email only
-Sherwood News,finance,rss,https://sherwood.news/feed/,https://sherwood.news,,1,6,check,Robinhood media arm
-Clouded Judgement,enterprise,rss,https://cloudedjudgement.substack.com/feed,https://cloudedjudgement.substack.com,,3,4,pattern,Jamin Ball; SaaS multiples
-Mostly Metrics,enterprise,rss,https://www.mostlymetrics.com/feed,https://www.mostlymetrics.com,,2,4,pattern,CJ Gustafson; SaaS finance
+Sherwood News,finance,rss,https://sherwood.news/rss.xml,https://sherwood.news,,1,6,verified,Robinhood media arm
+Clouded Judgement,enterprise,rss,https://cloudedjudgement.substack.com/feed,https://cloudedjudgement.substack.com,,3,4,verified,Jamin Ball; SaaS multiples
+Mostly Metrics,enterprise,email,,https://www.mostlymetrics.com,,2,4,n/a,CJ Gustafson; SaaS finance; no feed found (http_404); no working public feed; use Gmail/email path
 Tomasz Tunguz,enterprise,rss,https://tomtunguz.com/index.xml,https://tomtunguz.com,,2,6,high,Hugo feed
 SaaStr,enterprise,rss,https://www.saastr.com/feed/,https://www.saastr.com,,1,6,high,
-CMSWire,enterprise,rss,https://www.cmswire.com/rss/,https://www.cmswire.com,,3,8,check,ECM and DAM coverage
-Deep Analysis,enterprise,rss,https://www.deep-analysis.net/feed/,https://www.deep-analysis.net,,3,4,check,Alan Pelz-Sharpe; ECM analyst
-AIIM,enterprise,rss,https://info.aiim.org/aiim-blog/rss.xml,https://info.aiim.org/aiim-blog,,2,4,check,Information management
-Fabricated Knowledge,enterprise,rss,https://www.fabricatedknowledge.com/feed,https://www.fabricatedknowledge.com,,1,4,pattern,Semis
-Lenny's Newsletter,product,rss,https://www.lennysnewsletter.com/feed,https://www.lennysnewsletter.com,,2,4,pattern,Substack; partial free
-The Beautiful Mess,product,rss,https://cutlefish.substack.com/feed,https://cutlefish.substack.com,,1,4,pattern,John Cutler
-Reforge Blog,product,rss,https://www.reforge.com/blog/rss.xml,https://www.reforge.com/blog,,1,4,check,Verify path
-Astral Codex Ten,tech,rss,https://www.astralcodexten.com/feed,https://www.astralcodexten.com,,1,4,pattern,Substack; long form
+CMSWire,enterprise,rss,https://feeds2.feedburner.com/CMSWire,https://www.cmswire.com,,3,8,verified,ECM and DAM coverage
+Deep Analysis,enterprise,rss,https://www.deep-analysis.net/feed/,https://www.deep-analysis.net,,3,4,verified,Alan Pelz-Sharpe; ECM analyst
+AIIM,enterprise,rss,https://info.aiim.org/aiim-blog/rss.xml,https://info.aiim.org/aiim-blog,,2,4,verified,Information management
+Fabricated Knowledge,enterprise,rss,https://www.fabricatedknowledge.com/feed,https://www.fabricatedknowledge.com,,1,4,verified,Semis
+Lenny's Newsletter,product,rss,https://www.lennysnewsletter.com/feed,https://www.lennysnewsletter.com,,2,4,verified,Substack; partial free
+The Beautiful Mess,product,rss,https://cutlefish.substack.com/feed,https://cutlefish.substack.com,,1,4,verified,John Cutler
+Reforge Blog,product,email,,https://www.reforge.com/blog,,1,4,n/a,Verify path; no feed found (http_500); no working public feed; use Gmail/email path
+Astral Codex Ten,tech,rss,https://www.astralcodexten.com/feed,https://www.astralcodexten.com,,1,4,verified,Substack; long form
