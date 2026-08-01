@@ -6,8 +6,8 @@ Plus an on-demand **briefing console** and ask-over-corpus. Deploys to Vercel.
 
 ```
 Gmail inbox ──▶ /api/sync (daily cron) ──▶ Turso
-                      │ store raw, summarize + tag
-                      ▼
+RSS feeds   ──▶ /api/ingest-rss (daily) ──▶┘ store into emails corpus
+                      │
 Vercel Cron ──▶ /api/digest ──▶ buildDigest (LLM) ──▶ Gmail send
                       │
 Home (/) ──▶ briefing + ask ──▶ same corpus
@@ -50,10 +50,24 @@ Without a label, sync pulls recent inbox mail matching the default query.
 
 Edit `lib/personas.js` — default recipient (`DEFAULT_DIGEST_TO` / `DIGEST_TO`). One email per run with neutral talking points, stats, and one insight per role.
 
+## RSS feeds
+
+Optional second ingest path. Articles land in the same `emails` table (ids prefixed `rss:`) so digests and briefings pick them up automatically.
+
+```bash
+npm run verify-feeds              # probe data/sources.csv
+npm run verify-feeds -- --write   # repair broken feed URLs
+npm run seed-feeds                # upsert active feeds into Turso (needs TURSO_* env)
+curl -H "Authorization: Bearer $CRON_SECRET" https://<app>/api/ingest-rss
+```
+
+`data/sources.csv` lists ~45 RSS feeds and ~11 email-only sources (keep those on Gmail). Dead feeds auto-deactivate after repeated failures.
+
 ## Cron
 
 | Schedule | Route | Purpose |
 |----------|-------|---------|
+| Daily 04:00 UTC | `/api/ingest-rss` | Pull RSS articles into the corpus |
 | Daily 06:00 UTC | `/api/sync` | Pull new Gmail messages |
 | Daily 07:00 UTC | `/api/digest` | Send digest if interval elapsed |
 
