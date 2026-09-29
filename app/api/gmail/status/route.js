@@ -1,18 +1,13 @@
 // app/api/gmail/status/route.js — Gmail connection status.
 import { isGmailConnected, getGmailEmail, appOrigin, gmailRedirectUri } from "@/lib/gmail";
 import { getLastGmailSync } from "@/lib/db";
+import { isAuthorized } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function authorized(req) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
-  return new URL(req.url).searchParams.get("key") === secret;
-}
-
 export async function GET(req) {
-  if (!authorized(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!isAuthorized(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
 
   const connected = await isGmailConnected();
   const email = connected ? await getGmailEmail() : null;

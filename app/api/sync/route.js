@@ -1,23 +1,14 @@
-// app/api/sync/route.js — poll Gmail inbox → store → summarize.
+// app/api/sync/route.js — poll Gmail inbox → store (optional trash).
 import { syncGmailInbox } from "@/lib/gmail-sync";
 import { isGmailConnected } from "@/lib/gmail";
+import { isAuthorized } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-function authorized(req, body = {}) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
-  const auth = req.headers.get("authorization");
-  if (auth === `Bearer ${secret}`) return true;
-  const url = new URL(req.url);
-  if (url.searchParams.get("key") === secret) return true;
-  return body.key === secret;
-}
-
 async function handleSync(req, body = {}) {
-  if (!authorized(req, body)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!isAuthorized(req, body)) return Response.json({ error: "unauthorized" }, { status: 401 });
   if (!(await isGmailConnected())) {
     return Response.json(
       { error: "Gmail not connected — go to Setup and connect your account" },

@@ -4,16 +4,17 @@ import { callLLM } from "@/lib/llm";
 import { buildAskPrompt } from "@/lib/prompts";
 import { prepareNewsletterContentForDigest, publicationHint } from "@/lib/newsletter-text";
 import { isConfirmationEmail } from "@/lib/confirmations";
+import { isAuthorized } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function POST(req) {
-  const { question, key, persona = "general" } = await req.json().catch(() => ({}));
+  const body = await req.json().catch(() => ({}));
+  const { question, persona = "general" } = body;
 
-  const secret = process.env.CRON_SECRET;
-  if (secret && key !== secret) {
+  if (!isAuthorized(req, body)) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
   if (!question || !question.trim()) {
@@ -30,7 +31,13 @@ export async function POST(req) {
     });
   }
 
-  const extracts = rows
+  // Cap corpus size so ask stays inside Vercel time/token limits.
+  const capped = rows
+    .slice()
+    .sort((a, b) => (b.received_at || 0) - (a.received_at || 0))
+    .slice(0, Number(process.env.ASK_MAX_NEWSLETTERS || 40));
+
+  const extracts = capped
     .map((r, i) => {
       const when = new Date(r.received_at * 1000).toISOString().slice(0, 10);
       const pub = publicationHint({ sender: r.sender, subject: r.subject });
@@ -49,7 +56,7 @@ export async function POST(req) {
     personaKey: persona,
     question: question.trim(),
     runDate,
-    n: rows.length,
+    n: capped.length,
     extracts,
   });
 
@@ -58,6 +65,6 @@ export async function POST(req) {
   return Response.json({
     answer,
     persona,
-    sources: rows.map((r, i) => ({ n: i + 1, subject: r.subject, sender: r.sender })),
+    sources: capped.map((r, i) => ({ n: i + 1, subject: r.subject, sender: r.sender })),
   });
 }

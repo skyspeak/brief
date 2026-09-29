@@ -1,21 +1,15 @@
 // app/api/summarize/route.js — ad-hoc map-step: one email or all pending.
 //   POST { key, id? }  — id = single email; omit = all unsummarized
 import { summarizeOne, summarizePending } from "@/lib/run-summarize";
+import { isAuthorized } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // one email per batch on Vercel hobby
 
-function authorized(body, req) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
-  if (body?.key === secret) return true;
-  return new URL(req.url).searchParams.get("key") === secret;
-}
-
 export async function POST(req) {
   const body = await req.json().catch(() => ({}));
-  if (!authorized(body, req)) {
+  if (!isAuthorized(req, body)) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
 

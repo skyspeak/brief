@@ -8,20 +8,11 @@ import {
   sendDigestFromSavedSummaries,
 } from "@/lib/digest";
 import { markdownToEmailHtml } from "@/lib/markdown";
+import { isAuthorized } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-
-function authorized(req, body = {}) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
-  const auth = req.headers.get("authorization");
-  if (auth === `Bearer ${secret}`) return true;
-  const url = new URL(req.url);
-  if (url.searchParams.get("key") === secret) return true;
-  return body.key === secret;
-}
 
 function digestHtmlResponse(result) {
   if (result.skipped) {
@@ -53,7 +44,7 @@ function digestHtmlResponse(result) {
 }
 
 async function handleDigest(req, body = {}) {
-  if (!authorized(req, body)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!isAuthorized(req, body)) return Response.json({ error: "unauthorized" }, { status: 401 });
 
   const url = new URL(req.url);
   const force = url.searchParams.get("force") === "1" || body.force === true;
@@ -93,7 +84,7 @@ async function handleDigest(req, body = {}) {
     if (action === "send-saved") {
       const result = await sendDigestFromSavedSummaries({
         test,
-        force: force || test || true,
+        force: force || test,
       });
       if (format === "html") return digestHtmlResponse(result);
       return Response.json(result);

@@ -8,6 +8,8 @@ import {
 } from "@/lib/db";
 import { fetchFeed, mapLimit, itemTimestamp } from "@/lib/feed-fetch";
 import { itemHash, canonicalUrl, stripHtml } from "@/lib/canonical";
+import { isAuthorized } from "@/lib/auth";
+import { ensureFeedsSeeded } from "@/lib/seed-feeds-from-csv";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,22 +18,14 @@ export const maxDuration = 60;
 const WINDOW_DAYS = Number(process.env.RSS_WINDOW_DAYS || 2);
 const CONCURRENCY = Number(process.env.RSS_CONCURRENCY || 6);
 
-function authorized(req) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const header = req.headers.get("authorization") || "";
-  if (header === `Bearer ${secret}`) return true;
-  const url = new URL(req.url);
-  return url.searchParams.get("secret") === secret || url.searchParams.get("key") === secret;
-}
-
 export async function GET(req) {
-  if (!authorized(req)) {
+  if (!isAuthorized(req)) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
 
   const started = Date.now();
   const cutoff = started - WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  const seed = await ensureFeedsSeeded();
   const feeds = await listActiveFeeds();
 
   let inserted = 0;
@@ -102,6 +96,7 @@ export async function GET(req) {
   return Response.json({
     ok: true,
     feeds: feeds.length,
+    auto_seeded: !!seed.seeded,
     inserted,
     skippedDuplicate,
     skippedStale,

@@ -1,19 +1,14 @@
 // app/api/newsletters/route.js — neutral browse: newsletters in digest window.
-//   GET /api/newsletters?key=<CRON_SECRET>
+//   GET /api/newsletters?key=<ACCESS_KEY>
 import { listNewsletters } from "@/lib/db";
 import { getDigestWindowEmails } from "@/lib/digest";
+import { isAuthorized } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function authorized(req) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
-  return new URL(req.url).searchParams.get("key") === secret;
-}
-
 export async function GET(req) {
-  if (!authorized(req)) {
+  if (!isAuthorized(req)) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
 

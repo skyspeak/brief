@@ -21,8 +21,9 @@ Home (/) ──▶ briefing + ask ──▶ same corpus
    - Authorized redirect URI: `https://<your-app>.vercel.app/api/gmail/callback`
    - (Local dev: `http://localhost:3000/api/gmail/callback`)
 4. Set environment variables in Vercel (see `.env.example`).
-5. Deploy, then open **Setup** in the app → enter `CRON_SECRET` → **Connect Gmail**.
-6. Subscribe newsletters using your Gmail address → **Sync inbox**.
+5. Generate long-lived secrets locally: `npm run gen-secrets` → set **both** `ACCESS_KEY` and `CRON_SECRET` in Vercel (they can differ).
+6. Deploy, then open **Setup** in the app → paste `ACCESS_KEY` → **Connect Gmail**.
+7. Subscribe newsletters using your Gmail address → **Sync inbox**.
 
 ### Recommended: Gmail label filter
 
@@ -58,10 +59,20 @@ Optional second ingest path. Articles land in the same `emails` table (ids prefi
 npm run verify-feeds              # probe data/sources.csv
 npm run verify-feeds -- --write   # repair broken feed URLs
 npm run seed-feeds                # upsert active feeds into Turso (needs TURSO_* env)
+npm run gen-secrets               # print fresh ACCESS_KEY + CRON_SECRET
 curl -H "Authorization: Bearer $CRON_SECRET" https://<app>/api/ingest-rss
 ```
 
-`data/sources.csv` lists ~45 RSS feeds and ~11 email-only sources (keep those on Gmail). Dead feeds auto-deactivate after repeated failures.
+`data/sources.csv` lists ~45 RSS feeds and ~11 email-only sources (keep those on Gmail). Dead feeds auto-deactivate after repeated failures. The first `/api/ingest-rss` run **auto-seeds** feeds from the CSV when the table is empty.
+
+## Access secrets
+
+| Env var | Purpose |
+|---------|---------|
+| `ACCESS_KEY` | Long-lived UI / manual API key (paste into the app). **Does not expire.** |
+| `CRON_SECRET` | Vercel Cron `Authorization: Bearer …` token. Can differ from `ACCESS_KEY`. |
+
+Either value unlocks protected routes. Prefer `ACCESS_KEY` in the UI so you can rotate `CRON_SECRET` without changing what you type in the app.
 
 ## Cron
 
@@ -71,7 +82,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://<app>/api/ingest-rss
 | Daily 06:00 UTC | `/api/sync` | Pull new Gmail messages |
 | Daily 07:00 UTC | `/api/digest` | Send digest if interval elapsed |
 
-Requires `CRON_SECRET` in Vercel (sent as Bearer token on cron invocations).
+Requires `CRON_SECRET` in Vercel (sent as Bearer token on cron invocations). Set a separate `ACCESS_KEY` for the dashboard.
 
 ## Switching models
 

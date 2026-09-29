@@ -1,21 +1,18 @@
 // app/api/status/route.js — pipeline health: email counts + recent ingest state.
-//   /api/status?key=<CRON_SECRET>
+//   /api/status?key=<ACCESS_KEY>
 import { emailStatus, getLastDigestRun, getLastGmailSync } from "@/lib/db";
 import { llmEnvStatus, resolveModelFor, getProviderChain } from "@/lib/llm";
 import { isGmailConnected, getGmailEmail } from "@/lib/gmail";
+import { isAuthorized, authEnvStatus } from "@/lib/auth";
+import { resolveDigestRecipient } from "@/lib/digest";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function authorized(req) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
-  return new URL(req.url).searchParams.get("key") === secret;
-}
-
 async function envCheck() {
   const llm = llmEnvStatus();
   const gmailConnected = await isGmailConnected();
+  const auth = authEnvStatus();
 
   return {
     turso: !!(process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN),
@@ -30,12 +27,15 @@ async function envCheck() {
     llm_active_chain: llm.active_chain,
     gemini_configured: llm.gemini_configured,
     openrouter_configured: llm.openrouter_configured,
-    cron_secret: !!process.env.CRON_SECRET,
+    ...auth,
   };
 }
 
 function pipelineHint(counts, env) {
   if (!env.turso) return "Set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN in Vercel.";
+  if (!env.ui_key_configured) {
+    return "Set ACCESS_KEY (and CRON_SECRET for cron) in Vercel — run npm run gen-secrets.";
+  }
   if (!env.gemini_configured && !env.openrouter_configured) {
     return "Set GEMINI_API_KEY in Vercel — LLM is not configured.";
   }
@@ -50,7 +50,7 @@ function pipelineHint(counts, env) {
 }
 
 export async function GET(req) {
-  if (!authorized(req)) {
+  if (!isAuthorized(req)) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -79,6 +79,12 @@ export async function GET(req) {
     const lastDigest = await getLastDigestRun();
     const nextDigest = lastDigest ? lastDigest + intervalDays * 86400 : null;
     const lastSync = await getLastGmailSync();
+    const digestTo = await resolveDigestRecipient();
+    const digestToSource = process.env.DIGEST_TO?.trim()
+      ? "DIGEST_TO"
+      : env.gmail_email
+        ? "connected Gmail"
+        : "DEFAULT_DIGEST_TO";
 
     return Response.json({
       ok: counts.with_body > 0,
@@ -96,7 +102,8 @@ export async function GET(req) {
         window_days: Number(process.env.DIGEST_WINDOW_DAYS || intervalDays),
         last_run_at: lastDigest,
         next_run_at: nextDigest,
-        digest_to: process.env.DIGEST_TO || "connected Gmail (default)",
+        digest_to: digestTo,
+        digest_to_source: digestToSource,
       },
       hint: pipelineHint(counts, env),
     });
