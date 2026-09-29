@@ -11,15 +11,23 @@
  *
  * Requires TURSO_DATABASE_URL and TURSO_AUTH_TOKEN in the environment
  * (source .env.local first, or use `dotenv -e .env.local -- node ...`).
+ *
+ * Note: /api/ingest-rss also auto-seeds when the feeds table is empty, so a
+ * manual seed is only needed to refresh CSV changes before the next cron.
  */
+import { createClient } from "@libsql/client";
 import { readFile } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createClient } from "@libsql/client";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CSV = resolve(__dirname, "../data/sources.csv");
 const DEACTIVATE_MISSING = process.argv.includes("--deactivate-missing");
+
+if (!process.env.TURSO_DATABASE_URL) {
+  console.error("Set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN first.");
+  process.exit(1);
+}
 
 const db = createClient({
   url: process.env.TURSO_DATABASE_URL,
@@ -52,6 +60,25 @@ const rssRows = records.filter(
   (r) => r.delivery === "rss" && r.feed_url && r.confidence !== "broken"
 );
 const emailOnly = records.filter((r) => r.delivery === "email");
+
+await db.execute(`
+  CREATE TABLE IF NOT EXISTS feeds (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    category TEXT,
+    feed_url TEXT NOT NULL UNIQUE,
+    site_url TEXT,
+    active INTEGER NOT NULL DEFAULT 1,
+    weight INTEGER NOT NULL DEFAULT 1,
+    max_items INTEGER NOT NULL DEFAULT 10,
+    etag TEXT,
+    last_modified TEXT,
+    last_fetched_at TEXT,
+    last_status TEXT,
+    last_error TEXT,
+    consecutive_failures INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`);
 
 let upserts = 0;
 for (const r of rssRows) {
@@ -88,12 +115,8 @@ if (DEACTIVATE_MISSING) {
 }
 
 console.log(`\nseeded ${upserts} rss feed(s)`);
-console.log(`${emailOnly.length} source(s) marked email-only. Subscribe these to your`);
-console.log(`Resend inbound address and unsubscribe your personal inbox:\n`);
+console.log(`${emailOnly.length} source(s) marked email-only. Subscribe these to your Gmail address:\n`);
 for (const r of emailOnly) {
   console.log(`  ${r.name.padEnd(28)} ${r.signup_url || r.site_url}`);
 }
-console.log(
-  `\nQuota check: ${emailOnly.length} email sources at roughly 1 send/day each` +
-  ` = ~${emailOnly.length}/100 daily inbound on the Resend free tier.\n`
-);
+console.log("");

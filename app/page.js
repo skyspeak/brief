@@ -50,7 +50,7 @@ export default function Home() {
 
   function requireKey() {
     if (!key.trim()) {
-      setErr("Add your access key below first — it's the same as CRON_SECRET in Vercel.");
+      setErr("Add your access key below first — use ACCESS_KEY from Vercel (long-lived; does not expire).");
       return false;
     }
     return true;
@@ -100,7 +100,7 @@ export default function Home() {
     setBriefing(true);
 
     try {
-      const { parts, plan } = await runBatchedExtract("/api/briefing", {}, setProgress);
+      const { parts, plan } = await runBatchedExtract("/api/briefing", { persona }, setProgress);
       setProgress("Formatting briefing…");
       const briefRes = await fetch("/api/briefing", {
         method: "POST",

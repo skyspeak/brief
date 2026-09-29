@@ -9,7 +9,8 @@
     "setup": "node scripts/seed.mjs",
     "seed": "node scripts/seed.mjs",
     "verify-feeds": "node scripts/verify-feeds.mjs",
-    "seed-feeds": "node scripts/seed-feeds.mjs"
+    "seed-feeds": "node scripts/seed-feeds.mjs",
+    "gen-secrets": "node scripts/gen-secrets.mjs"
   },
   "dependencies": {
     "@libsql/client": "^0.15.0",

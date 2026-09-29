@@ -1,11 +1,11 @@
 // app/api/preview/route.js — preview digest without sending.
-//   /api/preview?key=<CRON_SECRET>            → digest HTML in browser
-//   /api/preview?key=<CRON_SECRET>&format=pdf → download PDF
-import { recentEmails } from "@/lib/db";
+//   /api/preview?key=<ACCESS_KEY>            → digest HTML in browser
+//   /api/preview?key=<ACCESS_KEY>&format=pdf → download PDF
 import { buildDigest } from "@/lib/issue";
-import { capNewslettersForDigest } from "@/lib/digest";
+import { getDigestWindowEmails } from "@/lib/digest";
 import { markdownToEmailHtml } from "@/lib/markdown";
 import { htmlToPdf } from "@/lib/pdf";
+import { isAuthorized } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,16 +13,12 @@ export const maxDuration = 60;
 
 export async function GET(req) {
   const url = new URL(req.url);
-
-  const secret = process.env.CRON_SECRET;
-  if (secret && url.searchParams.get("key") !== secret) {
+  if (!isAuthorized(req)) {
     return new Response("unauthorized", { status: 401 });
   }
 
   try {
-    const windowDays = Number(process.env.DIGEST_WINDOW_DAYS || process.env.DIGEST_INTERVAL_DAYS || 3);
-    const since = Math.floor(Date.now() / 1000) - windowDays * 86400;
-    const emails = capNewslettersForDigest(await recentEmails(since)).emails;
+    const { emails, windowDays } = await getDigestWindowEmails();
     if (!emails.length) return new Response("No emails in window yet.");
 
     const persona = url.searchParams.get("persona") || "general";

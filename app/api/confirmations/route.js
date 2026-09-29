@@ -1,22 +1,16 @@
 // app/api/confirmations/route.js — subscription confirmation emails + action links.
-//   GET  /api/confirmations?key=<CRON_SECRET>
+//   GET  /api/confirmations?key=<ACCESS_KEY>
 //   POST /api/confirmations  { key, id }  → mark as confirmed (clicked)
 import { recentEmailsWithBody, markEmailConfirmed } from "@/lib/db";
 import { listConfirmations } from "@/lib/confirmations";
 import { getGmailEmail } from "@/lib/gmail";
+import { isAuthorized } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function authorized(req, keyFromBody) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
-  if (keyFromBody === secret) return true;
-  return new URL(req.url).searchParams.get("key") === secret;
-}
-
 export async function GET(req) {
-  if (!authorized(req)) {
+  if (!isAuthorized(req)) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -46,7 +40,7 @@ export async function GET(req) {
 
 export async function POST(req) {
   const body = await req.json().catch(() => ({}));
-  if (!authorized(req, body.key)) {
+  if (!isAuthorized(req, body)) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
   if (!body.id) {

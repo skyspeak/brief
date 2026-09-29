@@ -1,13 +1,12 @@
 // app/api/gmail/auth/route.js — start OAuth flow.
 import { getAuthUrl } from "@/lib/gmail";
+import { isAuthorized } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req) {
-  const secret = process.env.CRON_SECRET;
-  const key = new URL(req.url).searchParams.get("key");
-  if (secret && key !== secret) {
+  if (!isAuthorized(req)) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
@@ -16,5 +15,6 @@ export async function GET(req) {
       { status: 503 }
     );
   }
-  return Response.redirect(getAuthUrl(key || "setup"));
+  const key = new URL(req.url).searchParams.get("key") || "setup";
+  return Response.redirect(getAuthUrl(key));
 }
