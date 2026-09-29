@@ -127,7 +127,9 @@ Optional: `VERIFICATION_DESK_MODEL` (defaults to `GEMINI_MODEL` / `gemini-2.0-fl
 
 ## Switching models
 
-Default: **Gemini only**. If Gemini returns **429**, the app automatically tries OpenRouter’s free model when `OPENROUTER_API_KEY` is set (no extra env flags). Always-on OpenRouter fallback still needs `LLM_FALLBACK=openrouter` + `LLM_ENABLE_OPENROUTER_FALLBACK=1`.
+Default: **Gemini only**. If Gemini returns **429** or **503** (overloaded), the app retries briefly, then tries OpenRouter’s free model when `OPENROUTER_API_KEY` is set. Always-on OpenRouter fallback still needs `LLM_FALLBACK=openrouter` + `LLM_ENABLE_OPENROUTER_FALLBACK=1`.
+
+If OpenRouter returns **402** (“never purchased credits”), free routes often need a phone verify or a small credit balance at https://openrouter.ai/settings/credits — or set `OPENROUTER_FREE_MODEL` / `LLM_MODEL` to an explicit `:free` model.
 
 | Provider | Env var | Default model |
 |----------|---------|---------------|
