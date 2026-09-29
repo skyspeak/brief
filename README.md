@@ -7,8 +7,9 @@ Plus an on-demand **briefing console** and ask-over-corpus. Deploys to Vercel.
 ```
 Gmail inbox ──▶ /api/sync (daily cron) ──▶ Turso
 RSS feeds   ──▶ /api/ingest-rss (daily) ──▶┘ store into emails corpus
-                      │
+    │
 Vercel Cron ──▶ /api/digest ──▶ buildDigest (LLM) ──▶ Gmail send
+Vercel Cron ──▶ /api/verification-desk (Mon) ──▶ Gemini + Google Search ──▶ Gmail
                       │
 Home (/) ──▶ briefing + ask ──▶ same corpus
 ```
@@ -44,6 +45,8 @@ Without a label, sync pulls recent inbox mail matching the default query.
 | `app/api/sync/route.js` | Manual + cron inbox sync |
 | `app/api/gmail/*` | OAuth connect flow |
 | `app/api/digest/route.js` | Scheduled digest send |
+| `app/api/verification-desk/route.js` | Weekly Verification Desk (Gemini search → Gmail) |
+| `lib/verification-desk.js` | Research, grade, email-safe HTML render, send |
 | `app/confirm/page.js` | Setup: connect Gmail, sync, confirm subscriptions |
 | `lib/personas.js` | Who gets a digest and how it's framed |
 
@@ -81,8 +84,28 @@ Either value unlocks protected routes. Prefer `ACCESS_KEY` in the UI so you can 
 | Daily 04:00 UTC | `/api/ingest-rss` | Pull RSS articles into the corpus |
 | Daily 06:00 UTC | `/api/sync` | Pull new Gmail messages |
 | Daily 07:00 UTC | `/api/digest` | Send digest if interval elapsed |
+| Mondays 01:00 UTC | `/api/bartma` | The Bartma Brief (~Sunday 6pm Pacific) |
 
 Requires `CRON_SECRET` in Vercel (sent as Bearer token on cron invocations). Set a separate `ACCESS_KEY` for the dashboard.
+
+## The Bartma Brief
+
+Weekly executive opportunity digest for Megh Gautam. Uses **Gemini + Google Search grounding**, verifies apply URLs, tracks sent items in Turso, and emails via the connected Gmail account (`prefer`-style path in `sendHtmlEmail`).
+
+| | |
+|--|--|
+| To | `skyspeak@gmail.com` (override with `BARTMA_TO`) |
+| Cc | `stuymusty@gmail.com` (override with `BARTMA_CC`) |
+| Subject | `The Bartma Brief — Vol. 1, No. N: …` |
+
+Manual run (dry first):
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" "https://<app>/api/bartma?dry=1"
+curl -H "Authorization: Bearer $CRON_SECRET" "https://<app>/api/bartma"
+```
+
+Needs `maxDuration` up to 300s (Vercel Pro). Hobby may time out on the research step.
 
 ## Switching models
 

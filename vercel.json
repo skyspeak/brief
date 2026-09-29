@@ -12,6 +12,14 @@
     {
       "path": "/api/digest",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/bartma",
+      "schedule": "0 1 * * 1"
+    },
+    {
+      "path": "/api/verification-desk",
+      "schedule": "0 14 * * 1"
     }
   ]
 }
