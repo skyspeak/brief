@@ -2,7 +2,7 @@
 //   /api/status?key=<ACCESS_KEY>
 import { emailStatus, getLastDigestRun, getLastGmailSync } from "@/lib/db";
 import { llmEnvStatus, resolveModelFor, getProviderChain } from "@/lib/llm";
-import { isGmailConnected, getGmailEmail } from "@/lib/gmail";
+import { isGmailConnected, getGmailEmail, getGmailTokenHealth } from "@/lib/gmail";
 import { isAuthorized, authEnvStatus } from "@/lib/auth";
 import { resolveDigestRecipient } from "@/lib/digest";
 
@@ -43,6 +43,7 @@ function pipelineHint(counts, env) {
   if (!env.gmail_oauth) return "Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, then connect Gmail on Setup.";
   if (!env.gmail_connected) return "Connect Gmail on the Setup page — newsletters are read from that inbox.";
   if (counts.total === 0) return "No emails synced yet — subscribe newsletters to your Gmail address, then Sync inbox.";
+  // gmail token longevity is attached later; keep generic body hints here.
   if (counts.with_body === 0) return "Emails stored but bodies empty — try Sync inbox again.";
   if (counts.with_body > 0 && counts.digested === 0)
     return "Ready — send digest from Home to synthesize the digest window into insights with source URLs.";
@@ -85,9 +86,10 @@ export async function GET(req) {
       : env.gmail_email
         ? "connected Gmail"
         : "DEFAULT_DIGEST_TO";
+    const gmailToken = await getGmailTokenHealth();
 
     return Response.json({
-      ok: counts.with_body > 0,
+      ok: counts.with_body > 0 && gmailToken.longevity !== "expired",
       env: { ...env, llm_model_resolved, llm_models_resolved },
       counts,
       recent,
@@ -96,6 +98,7 @@ export async function GET(req) {
         email: env.gmail_email,
         last_sync_at: lastSync,
         label: process.env.GMAIL_LABEL || null,
+        token: gmailToken,
       },
       digest: {
         interval_days: intervalDays,
