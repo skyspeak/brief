@@ -123,7 +123,8 @@ export default function SetupPage() {
   const loadGmail = useCallback(async () => {
     if (!key.trim()) return;
     try {
-      const r = await fetch(`/api/gmail/status?key=${encodeURIComponent(key)}`);
+      // probe=1 forces a live refresh so we surface expired tokens immediately
+      const r = await fetch(`/api/gmail/status?key=${encodeURIComponent(key)}&probe=1`);
       const parsed = await parseApiResponse(r);
       if (parsed.data && r.ok) setGmail(parsed.data);
     } catch {
@@ -224,16 +225,23 @@ export default function SetupPage() {
         <h2 className="card-title">1. Connect Gmail</h2>
         <AccessKeyField value={key} onChange={setKey} id="setup-key" onBlur={loadGmail} />
 
-        {gmail?.connected ? (
+        {gmail?.connected && gmail?.token?.longevity !== "expired" && gmail?.probe?.ok !== false ? (
           <div className="alert alert-success" style={{ marginBottom: "1rem" }}>
             Connected as <strong>{gmail.email || "your account"}</strong>
             {gmail.last_sync_at && (
               <span> · last sync {fmtTime(gmail.last_sync_at)}</span>
             )}
+            {gmail.token?.has_env_backup && (
+              <span> · durable <code>GMAIL_REFRESH_TOKEN</code> backup set</span>
+            )}
           </div>
         ) : gmail?.oauth_configured === false ? (
           <div className="alert alert-warning" style={{ marginBottom: "1rem" }}>
             Add <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> in Vercel, then redeploy.
+          </div>
+        ) : gmail?.connected ? (
+          <div className="alert alert-error" style={{ marginBottom: "1rem" }}>
+            {gmail.probe?.hint || gmail.token?.hint || "Gmail token needs reconnect."}
           </div>
         ) : (
           <div className="alert alert-info" style={{ marginBottom: "1rem" }}>
@@ -241,17 +249,43 @@ export default function SetupPage() {
           </div>
         )}
 
+        {(gmail?.token?.longevity === "at_risk" ||
+          gmail?.token?.longevity === "ok" ||
+          gmail?.token?.longevity === "durable") &&
+          gmail?.token?.hint && (
+            <div
+              className={`alert ${gmail.token.longevity === "at_risk" ? "alert-warning" : "alert-info"}`}
+              style={{ marginBottom: "1rem" }}
+            >
+              <strong>Long-lived Gmail token:</strong> {gmail.token.hint}{" "}
+              <a
+                href={gmail.token.oauth_publish_url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open OAuth consent →
+              </a>
+            </div>
+          )}
+
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-          {!gmail?.connected && (
+          {(!gmail?.connected ||
+            gmail?.token?.longevity === "expired" ||
+            gmail?.probe?.ok === false) && (
             <button type="button" className="btn btn-primary btn-block" onClick={connectGmail}>
-              Connect Gmail
+              {gmail?.connected ? "Reconnect Gmail" : "Connect Gmail"}
+            </button>
+          )}
+          {gmail?.connected && gmail?.token?.longevity !== "expired" && gmail?.probe?.ok !== false && (
+            <button type="button" className="btn btn-secondary btn-block" onClick={connectGmail}>
+              Reconnect Gmail (refresh token)
             </button>
           )}
           <button
             type="button"
             className="btn btn-secondary btn-block"
             onClick={syncInbox}
-            disabled={syncing || !gmail?.connected}
+            disabled={syncing || !gmail?.connected || gmail?.probe?.ok === false}
           >
             {syncing ? "Syncing inbox…" : "Sync inbox now"}
           </button>

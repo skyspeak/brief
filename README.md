@@ -96,9 +96,24 @@ Default: **Gemini only**. OpenRouter fallback is off unless you set both `LLM_FA
 
 ## Gotchas
 
-- **OAuth testing mode** — personal Gmail apps in "Testing" need your Google account added as a test user on the OAuth consent screen.
-- **Refresh token** is stored in Turso after connect; optionally also set `GMAIL_REFRESH_TOKEN` in env.
-- **Re-auth after scope changes** — revoke the app at Google Account permissions and reconnect on Setup.
+### Gmail refresh tokens (the thing that actually expires)
+
+`ACCESS_KEY` / `CRON_SECRET` never expire. The token that dies is Google’s **refresh token**:
+
+| OAuth consent publishing | Refresh token lifetime |
+|--------------------------|------------------------|
+| **Testing** | ~**7 days**, then sync/digest fail with `invalid_grant` |
+| **Production** | Long-lived (until revoked) |
+
+**Make it durable:**
+
+1. [OAuth consent screen](https://console.cloud.google.com/apis/credentials/consent) → **Publish to Production** (add yourself as a test user first while still in Testing).
+2. Reconnect Gmail on Setup (forces a fresh refresh token).
+3. On the connect confirmation page, copy the refresh token → set `GMAIL_REFRESH_TOKEN` in Vercel → redeploy.
+
+The app also re-persists rotated refresh tokens, probes auth on every sync, and surfaces expiry on Setup.
+
+- **Restricted scopes** — `gmail.modify` / `gmail.send` show an unverified-app warning until Google verification; fine for personal use under the unverified user cap.
+- **Re-auth after scope changes** — revoke at [myaccount.google.com/permissions](https://myaccount.google.com/permissions) and reconnect on Setup.
 - **Summarized mail** is moved to Gmail Trash (not permanently deleted). Set `GMAIL_KEEP_IN_INBOX=1` to disable.
 - **`OUTPUT_FORMAT=text`** (default) sends plain-text digests. Use `html` or `pdf` if you want styled email.
-- **Re-auth** — revoke the app at [myaccount.google.com/permissions](https://myaccount.google.com/permissions) and reconnect if tokens break.
