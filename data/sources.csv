@@ -1,57 +1,51 @@
 name,category,delivery,feed_url,site_url,signup_url,weight,max_items,confidence,notes
-Stratechery (free posts),enterprise,rss,https://stratechery.com/feed/,https://stratechery.com,https://stratechery.com/membership/,3,5,high,Free tier only in the public feed
-Benedict Evans,tech,rss,https://www.ben-evans.com/benedictevans?format=rss,https://www.ben-evans.com,https://www.ben-evans.com/newsletter,3,5,high,Squarespace format=rss
-Platformer,tech,rss,https://www.platformer.news/feed,https://www.platformer.news,https://www.platformer.news,2,8,verified,Ghost feed convention
-Simon Willison,ai,rss,https://simonwillison.net/atom/everything/,https://simonwillison.net,,3,10,high,High signal on model releases
-Latent Space,ai,rss,https://www.latent.space/feed,https://www.latent.space,https://www.latent.space,2,6,verified,Substack
-Interconnects,ai,rss,https://www.interconnects.ai/feed,https://www.interconnects.ai,https://www.interconnects.ai,2,6,verified,Substack; Nathan Lambert
-Import AI,ai,rss,https://jack-clark.net/feed/,https://jack-clark.net,https://jack-clark.net,3,4,high,WordPress; Jack Clark
-The Gradient,ai,rss,https://thegradientpub.substack.com/feed,https://thegradient.pub,,1,5,verified,Substack
-SemiAnalysis,ai,rss,https://semianalysis.com/feed/,https://semianalysis.com,,3,5,high,Compute and supply chain
-Hugging Face Blog,ai,rss,https://huggingface.co/blog/feed.xml,https://huggingface.co/blog,,1,8,high,Open model releases
-OpenAI Blog,ai,rss,https://openai.com/blog/rss.xml,https://openai.com/blog,,2,6,verified,Path has moved before; verify
-Google DeepMind Blog,ai,rss,https://deepmind.google/blog/rss.xml,https://deepmind.google/discover/blog/,,1,6,verified,Verify with discovery script
-Anthropic News,ai,email,,https://www.anthropic.com/news,,2,6,n/a,No documented feed; discovery script may find one; no feed found (no_url); no working public feed; use Gmail/email path
-Ben's Bites,ai,rss,https://www.bensbites.com/feed,https://www.bensbites.com,https://www.bensbites.com,1,5,verified,beehiiv feed path varies
-The Batch (DeepLearning.AI),ai,email,,https://www.deeplearning.ai/the-batch/,https://www.deeplearning.ai/the-batch/,1,4,n/a,Verify; no feed found (http_404); no working public feed; use Gmail/email path
-The Neuron,ai,email,,https://www.theneurondaily.com,https://www.theneurondaily.com,1,4,n/a,Email only
-Superhuman AI,ai,email,,https://www.superhuman.ai,https://www.superhuman.ai,1,4,n/a,Email only
-TLDR AI,ai,email,,https://tldr.tech/ai,https://tldr.tech/ai,1,4,n/a,Email only; high volume
-TechCrunch,tech,rss,https://techcrunch.com/feed/,https://techcrunch.com,,1,12,high,Very high volume; cap items
-Ars Technica,tech,rss,https://feeds.arstechnica.com/arstechnica/index,https://arstechnica.com,,1,10,high,
-The Verge,tech,rss,https://www.theverge.com/rss/index.xml,https://www.theverge.com,,1,10,high,
-MIT Technology Review,tech,rss,https://www.technologyreview.com/feed/,https://www.technologyreview.com,,1,8,high,
-Wired,tech,rss,https://www.wired.com/feed/rss,https://www.wired.com,,1,8,high,
-The Register,tech,rss,https://www.theregister.com/headlines.atom,https://www.theregister.com,,1,10,high,Enterprise IT skew
-Hacker News front page,tech,rss,https://hnrss.org/frontpage?points=150,https://news.ycombinator.com,,2,15,high,Third-party bridge; points filter tunes volume
-Sifted,tech,rss,https://sifted.eu/feed,https://sifted.eu,,1,6,verified,European startups
-Semafor Technology,tech,rss,https://www.semafor.com/rss.xml,https://www.semafor.com/section/tech,,1,6,verified,Section-specific feed may exist
-The Pragmatic Engineer,tech,rss,https://newsletter.pragmaticengineer.com/feed,https://newsletter.pragmaticengineer.com,,2,5,verified,Substack; partial free
-The Information,tech,email,,https://www.theinformation.com,https://www.theinformation.com,3,4,n/a,Paid; no public feed
-Marginal Revolution,finance,rss,https://marginalrevolution.com/feed,https://marginalrevolution.com,,1,10,high,Economics
-Calculated Risk,finance,rss,https://www.calculatedriskblog.com/feeds/posts/default,https://www.calculatedriskblog.com,,1,8,high,Blogger feed
-Net Interest,finance,rss,https://www.netinterest.co/feed,https://www.netinterest.co,,2,4,verified,Substack; financial sector
-The Diff,finance,rss,https://www.thediff.co/feed,https://www.thediff.co,,3,5,verified,Partially paywalled
-Not Boring,finance,rss,https://www.notboring.co/feed,https://www.notboring.co,,1,4,verified,Substack
-Crunchbase News,finance,rss,https://news.crunchbase.com/feed/,https://news.crunchbase.com,,2,8,high,Funding rounds
-a16z,finance,rss,https://a16z.com/feed/,https://a16z.com,,1,6,high,
-Money Stuff (Matt Levine),finance,email,,https://www.bloomberg.com/opinion/authors/ARbTQlRLRjE/matthew-s-levine,https://www.bloomberg.com/account/newsletters/money-stuff,3,4,n/a,Bloomberg; email only
-Axios Pro Rata,finance,email,,https://www.axios.com/newsletters/pro-rata,https://www.axios.com/newsletters/pro-rata,2,4,n/a,Deals; email only
-StrictlyVC,finance,email,,https://www.strictlyvc.com,https://www.strictlyvc.com,1,4,n/a,Email only
-Term Sheet (Fortune),finance,email,,https://fortune.com/newsletter/termsheet/,https://fortune.com/newsletter/termsheet/,1,4,n/a,Email only
-The Daily Upside,finance,email,,https://www.thedailyupside.com,https://www.thedailyupside.com,1,4,n/a,Email only
-Morning Brew,finance,email,,https://www.morningbrew.com,https://www.morningbrew.com,1,3,n/a,Already subscribed
-Exec Sum,finance,email,,https://www.execsum.co,https://www.execsum.co,1,3,n/a,Email only
-Sherwood News,finance,rss,https://sherwood.news/rss.xml,https://sherwood.news,,1,6,verified,Robinhood media arm
-Clouded Judgement,enterprise,rss,https://cloudedjudgement.substack.com/feed,https://cloudedjudgement.substack.com,,3,4,verified,Jamin Ball; SaaS multiples
-Mostly Metrics,enterprise,email,,https://www.mostlymetrics.com,,2,4,n/a,CJ Gustafson; SaaS finance; no feed found (http_404); no working public feed; use Gmail/email path
-Tomasz Tunguz,enterprise,rss,https://tomtunguz.com/index.xml,https://tomtunguz.com,,2,6,high,Hugo feed
-SaaStr,enterprise,rss,https://www.saastr.com/feed/,https://www.saastr.com,,1,6,high,
-CMSWire,enterprise,rss,https://feeds2.feedburner.com/CMSWire,https://www.cmswire.com,,3,8,verified,ECM and DAM coverage
-Deep Analysis,enterprise,rss,https://www.deep-analysis.net/feed/,https://www.deep-analysis.net,,3,4,verified,Alan Pelz-Sharpe; ECM analyst
-AIIM,enterprise,rss,https://info.aiim.org/aiim-blog/rss.xml,https://info.aiim.org/aiim-blog,,2,4,verified,Information management
-Fabricated Knowledge,enterprise,rss,https://www.fabricatedknowledge.com/feed,https://www.fabricatedknowledge.com,,1,4,verified,Semis
-Lenny's Newsletter,product,rss,https://www.lennysnewsletter.com/feed,https://www.lennysnewsletter.com,,2,4,verified,Substack; partial free
-The Beautiful Mess,product,rss,https://cutlefish.substack.com/feed,https://cutlefish.substack.com,,1,4,verified,John Cutler
-Reforge Blog,product,email,,https://www.reforge.com/blog,,1,4,n/a,Verify path; no feed found (http_500); no working public feed; use Gmail/email path
-Astral Codex Ten,tech,rss,https://www.astralcodexten.com/feed,https://www.astralcodexten.com,,1,4,verified,Substack; long form
+OpenAI News,lab_primary,rss,https://openai.com/news/rss.xml,https://openai.com,,3,5,verified,Model and product launches; canonical source for OpenAI claims
+Google DeepMind,lab_primary,rss,https://deepmind.google/blog/rss.xml,https://deepmind.google,,3,5,high,Research and model releases
+Google AI (blog.google),lab_primary,rss,https://blog.google/technology/ai/rss/,https://blog.google,,3,5,verified,Product-side Google AI announcements
+Hugging Face Blog,lab_primary,rss,https://huggingface.co/blog/feed.xml,https://huggingface.co,,3,5,verified,Open-model and tooling ecosystem
+Microsoft Research,lab_primary,rss,https://www.microsoft.com/en-us/research/feed/,https://www.microsoft.com,,3,5,high,Broad; filter to AI tags
+NVIDIA Blog,lab_primary,rss,https://blogs.nvidia.com/feed/,https://blogs.nvidia.com,,3,6,high,Compute and infra narrative; heavy marketing skew
+AWS Machine Learning Blog,lab_primary,rss,https://aws.amazon.com/blogs/machine-learning/feed/,https://aws.amazon.com,,3,6,high,Enterprise deployment patterns
+Meta AI Blog,lab_primary,rss,https://ai.meta.com/blog/rss/,https://ai.meta.com,,3,5,high,VERIFY endpoint; Llama and FAIR releases
+arXiv cs.AI,research,rss,https://rss.arxiv.org/rss/cs.AI,https://rss.arxiv.org,,3,8,verified,Very high volume; keyword filter required
+arXiv cs.CL,research,rss,https://rss.arxiv.org/rss/cs.CL,https://rss.arxiv.org,,3,8,high,NLP and LLM papers; highest signal arXiv category for LLM work
+arXiv cs.LG,research,rss,https://rss.arxiv.org/rss/cs.LG,https://rss.arxiv.org,,2,8,high,ML methods; highest volume of the three
+Berkeley BAIR Blog,research,rss,https://bair.berkeley.edu/blog/feed.xml,https://bair.berkeley.edu,,2,5,high,Academic explainers written for practitioners
+MIT News - AI,research,rss,https://news.mit.edu/rss/topic/artificial-intelligence2,https://news.mit.edu,,2,5,high,University PR but reliably early on papers
+Stanford HAI,research,rss,https://hai.stanford.edu/news/rss.xml,https://hai.stanford.edu,,2,5,high,VERIFY endpoint; policy and AI Index data
+TechCrunch AI,news,rss,https://techcrunch.com/category/artificial-intelligence/feed/,https://techcrunch.com,,2,6,verified,Funding rounds and startup launches
+The Verge - AI,news,rss,https://www.theverge.com/rss/ai-artificial-intelligence/index.xml,https://www.theverge.com,,2,6,verified,Consumer angle; free feed is excerpt only
+Ars Technica AI,news,rss,https://arstechnica.com/ai/feed/,https://arstechnica.com,,2,6,verified,Technically literate reporting
+WIRED AI,news,rss,https://www.wired.com/feed/tag/ai/latest/rss,https://www.wired.com,,2,6,verified,Partial paywall
+MIT Technology Review - AI,news,rss,https://www.technologyreview.com/topic/artificial-intelligence/feed/,https://www.technologyreview.com,,2,6,verified,Best editorial framing; metered paywall
+VentureBeat AI,news,rss,https://venturebeat.com/category/ai/feed/,https://venturebeat.com,,2,6,high,Enterprise AI adoption stories
+The Register - AI/ML,news,rss,https://www.theregister.com/software/ai_ml/headlines.atom,https://www.theregister.com,,2,6,high,Skeptical counterweight to lab PR
+MarkTechPost,news,rss,https://www.marktechpost.com/feed/,https://www.marktechpost.com,,2,6,verified,Fast paper and release summaries; low editorial filter
+Techmeme,aggregator,rss,https://www.techmeme.com/feed.xml,https://www.techmeme.com,,2,8,high,Best single dedup signal for what broke today
+Hacker News front page,aggregator,rss,https://hnrss.org/frontpage,https://hnrss.org,,2,8,high,Use hnrss points filter e.g. ?points=200
+404 Media,news,rss,https://www.404media.co/rss/,https://www.404media.co,,2,6,high,Investigative; AI harms and platform abuse
+Rest of World,news,rss,https://restofworld.org/feed/latest/,https://restofworld.org,,1,6,high,Non-US tech coverage
+Platformer,news,rss,https://www.platformer.news/rss/,https://www.platformer.news,,1,5,high,Casey Newton; platform and AI policy
+IEEE Spectrum - AI,news,rss,https://spectrum.ieee.org/feeds/topic/artificial-intelligence.rss,https://spectrum.ieee.org,,1,5,high,Engineering depth; hardware and robotics
+Simon Willison,analyst,rss,https://simonwillison.net/atom/everything/,https://simonwillison.net,,1,6,verified,Highest signal per word on practical LLM use
+Stratechery,analyst,rss,https://stratechery.com/feed/,https://stratechery.com,,1,5,high,Strategy framing; most content paywalled
+Interconnects,analyst,rss,https://www.interconnects.ai/feed,https://www.interconnects.ai,,1,5,high,Nathan Lambert; post-training and open models
+Ahead of AI,analyst,rss,https://magazine.sebastianraschka.com/feed,https://magazine.sebastianraschka.com,,1,5,verified,Sebastian Raschka; LLM architecture deep dives
+Latent Space,analyst,rss,https://www.latent.space/feed,https://www.latent.space,,1,5,verified,AI engineering practice and interviews
+The Gradient,analyst,rss,https://thegradient.pub/rss/,https://thegradient.pub,,1,5,verified,Long-form essays; low cadence
+Last Week in AI,analyst,rss,https://lastweekin.ai/feed,https://lastweekin.ai,,1,5,verified,Weekly roundup plus podcast
+One Useful Thing,analyst,rss,https://www.oneusefulthing.org/feed,https://www.oneusefulthing.org,,1,5,high,Ethan Mollick; workplace and education adoption
+Import AI,analyst,rss,https://jack-clark.net/feed/,https://jack-clark.net,,1,5,high,VERIFY; import.ai/rss is dead but the WordPress feed may still serve
+Don't Worry About the Vase,analyst,rss,https://thezvi.substack.com/feed,https://thezvi.substack.com,,1,5,high,Zvi Mowshowitz; exhaustive weekly AI roundup
+Dwarkesh Podcast,analyst,rss,https://www.dwarkeshpatel.com/feed,https://www.dwarkeshpatel.com,,1,5,verified,Long interviews with researchers and founders
+AI Snake Oil,analyst,rss,https://www.aisnakeoil.com/feed,https://www.aisnakeoil.com,,1,5,high,Narayanan and Kapoor; hype correction
+Understanding AI,analyst,rss,https://www.understandingai.org/feed,https://www.understandingai.org,,1,5,high,Timothy B. Lee; explanatory reporting
+SemiAnalysis,analyst,rss,https://semianalysis.com/feed/,https://semianalysis.com,,1,5,high,Compute supply chain and datacenter economics
+Gary Marcus,analyst,rss,https://garymarcus.substack.com/feed,https://garymarcus.substack.com,,1,5,verified,Critic voice; useful for balance
+The Algorithmic Bridge,analyst,rss,https://www.thealgorithmicbridge.com/feed,https://www.thealgorithmicbridge.com,,1,5,high,Alberto Romero; essayistic AI analysis
+ChinAI,analyst,rss,https://chinai.substack.com/feed,https://chinai.substack.com,,1,5,high,Jeff Ding; translated Chinese AI writing
+Exponential View,analyst,rss,https://www.exponentialview.co/feed,https://www.exponentialview.co,,1,5,high,Azeem Azhar; macro tech framing
+Benedict Evans,analyst,rss,https://www.ben-evans.com/benedictevans?format=rss,https://www.ben-evans.com,,1,5,high,Market structure and platform shifts
+The Pragmatic Engineer,practitioner,rss,https://newsletter.pragmaticengineer.com/feed,https://newsletter.pragmaticengineer.com,,1,5,high,Gergely Orosz; AI tooling adoption inside real teams
+Lenny's Newsletter,practitioner,rss,https://www.lennysnewsletter.com/feed,https://www.lennysnewsletter.com,,1,5,high,Product management; AI-native PM practice
+a16z,vc,rss,https://a16z.com/feed/,https://a16z.com,,1,5,high,Thesis content; treat as marketing not reporting

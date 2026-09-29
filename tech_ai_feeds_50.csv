@@ -1,0 +1,51 @@
+rank,source,feed_url,bucket,cadence,full_text,verified,notes
+1,OpenAI News,https://openai.com/news/rss.xml,lab_primary,bursty,partial,yes,Model and product launches; canonical source for OpenAI claims
+2,Google DeepMind,https://deepmind.google/blog/rss.xml,lab_primary,weekly,partial,no,Research and model releases
+3,Google AI (blog.google),https://blog.google/technology/ai/rss/,lab_primary,several_per_week,partial,yes,Product-side Google AI announcements
+4,Hugging Face Blog,https://huggingface.co/blog/feed.xml,lab_primary,several_per_week,yes,yes,Open-model and tooling ecosystem
+5,Microsoft Research,https://www.microsoft.com/en-us/research/feed/,lab_primary,several_per_week,partial,no,Broad; filter to AI tags
+6,NVIDIA Blog,https://blogs.nvidia.com/feed/,lab_primary,daily,yes,no,Compute and infra narrative; heavy marketing skew
+7,AWS Machine Learning Blog,https://aws.amazon.com/blogs/machine-learning/feed/,lab_primary,daily,yes,no,Enterprise deployment patterns
+8,Meta AI Blog,https://ai.meta.com/blog/rss/,lab_primary,weekly,partial,no,VERIFY endpoint; Llama and FAIR releases
+9,arXiv cs.AI,https://rss.arxiv.org/rss/cs.AI,research,daily_weekday,abstract,yes,Very high volume; keyword filter required
+10,arXiv cs.CL,https://rss.arxiv.org/rss/cs.CL,research,daily_weekday,abstract,no,NLP and LLM papers; highest signal arXiv category for LLM work
+11,arXiv cs.LG,https://rss.arxiv.org/rss/cs.LG,research,daily_weekday,abstract,no,ML methods; highest volume of the three
+12,Berkeley BAIR Blog,https://bair.berkeley.edu/blog/feed.xml,research,monthly,yes,no,Academic explainers written for practitioners
+13,MIT News - AI,https://news.mit.edu/rss/topic/artificial-intelligence2,research,several_per_week,partial,no,University PR but reliably early on papers
+14,Stanford HAI,https://hai.stanford.edu/news/rss.xml,research,weekly,partial,no,VERIFY endpoint; policy and AI Index data
+15,TechCrunch AI,https://techcrunch.com/category/artificial-intelligence/feed/,news,daily,excerpt,yes,Funding rounds and startup launches
+16,The Verge - AI,https://www.theverge.com/rss/ai-artificial-intelligence/index.xml,news,daily,excerpt,yes,Consumer angle; free feed is excerpt only
+17,Ars Technica AI,https://arstechnica.com/ai/feed/,news,daily,excerpt,yes,Technically literate reporting
+18,WIRED AI,https://www.wired.com/feed/tag/ai/latest/rss,news,daily,excerpt,yes,Partial paywall
+19,MIT Technology Review - AI,https://www.technologyreview.com/topic/artificial-intelligence/feed/,news,daily,excerpt,yes,Best editorial framing; metered paywall
+20,VentureBeat AI,https://venturebeat.com/category/ai/feed/,news,daily,yes,no,Enterprise AI adoption stories
+21,The Register - AI/ML,https://www.theregister.com/software/ai_ml/headlines.atom,news,daily,excerpt,no,Skeptical counterweight to lab PR
+22,MarkTechPost,https://www.marktechpost.com/feed/,news,multiple_daily,yes,yes,Fast paper and release summaries; low editorial filter
+23,Techmeme,https://www.techmeme.com/feed.xml,aggregator,continuous,headline,no,Best single dedup signal for what broke today
+24,Hacker News front page,https://hnrss.org/frontpage,aggregator,continuous,link_only,no,Use hnrss points filter e.g. ?points=200
+25,404 Media,https://www.404media.co/rss/,news,daily,partial,no,Investigative; AI harms and platform abuse
+26,Rest of World,https://restofworld.org/feed/latest/,news,daily,yes,no,Non-US tech coverage
+27,Platformer,https://www.platformer.news/rss/,news,several_per_week,partial,no,Casey Newton; platform and AI policy
+28,IEEE Spectrum - AI,https://spectrum.ieee.org/feeds/topic/artificial-intelligence.rss,news,several_per_week,yes,no,Engineering depth; hardware and robotics
+29,Simon Willison,https://simonwillison.net/atom/everything/,analyst,daily,yes,yes,Highest signal per word on practical LLM use
+30,Stratechery,https://stratechery.com/feed/,analyst,several_per_week,partial,no,Strategy framing; most content paywalled
+31,Interconnects,https://www.interconnects.ai/feed,analyst,weekly,yes,no,Nathan Lambert; post-training and open models
+32,Ahead of AI,https://magazine.sebastianraschka.com/feed,analyst,monthly,yes,yes,Sebastian Raschka; LLM architecture deep dives
+33,Latent Space,https://www.latent.space/feed,analyst,weekly,yes,yes,AI engineering practice and interviews
+34,The Gradient,https://thegradient.pub/rss/,analyst,low,yes,yes,Long-form essays; low cadence
+35,Last Week in AI,https://lastweekin.ai/feed,analyst,weekly,yes,yes,Weekly roundup plus podcast
+36,One Useful Thing,https://www.oneusefulthing.org/feed,analyst,weekly,yes,no,Ethan Mollick; workplace and education adoption
+37,Import AI,https://jack-clark.net/feed/,analyst,weekly,yes,no,VERIFY; import.ai/rss is dead but the WordPress feed may still serve
+38,Don't Worry About the Vase,https://thezvi.substack.com/feed,analyst,weekly,yes,no,Zvi Mowshowitz; exhaustive weekly AI roundup
+39,Dwarkesh Podcast,https://www.dwarkeshpatel.com/feed,analyst,biweekly,yes,yes,Long interviews with researchers and founders
+40,AI Snake Oil,https://www.aisnakeoil.com/feed,analyst,monthly,yes,no,Narayanan and Kapoor; hype correction
+41,Understanding AI,https://www.understandingai.org/feed,analyst,weekly,partial,no,Timothy B. Lee; explanatory reporting
+42,SemiAnalysis,https://semianalysis.com/feed/,analyst,weekly,partial,no,Compute supply chain and datacenter economics
+43,Gary Marcus,https://garymarcus.substack.com/feed,analyst,several_per_week,yes,yes,Critic voice; useful for balance
+44,The Algorithmic Bridge,https://www.thealgorithmicbridge.com/feed,analyst,weekly,partial,no,Alberto Romero; essayistic AI analysis
+45,ChinAI,https://chinai.substack.com/feed,analyst,weekly,yes,no,Jeff Ding; translated Chinese AI writing
+46,Exponential View,https://www.exponentialview.co/feed,analyst,weekly,partial,no,Azeem Azhar; macro tech framing
+47,Benedict Evans,https://www.ben-evans.com/benedictevans?format=rss,analyst,weekly,yes,no,Market structure and platform shifts
+48,The Pragmatic Engineer,https://newsletter.pragmaticengineer.com/feed,practitioner,weekly,partial,no,Gergely Orosz; AI tooling adoption inside real teams
+49,Lenny's Newsletter,https://www.lennysnewsletter.com/feed,practitioner,weekly,partial,no,Product management; AI-native PM practice
+50,a16z,https://a16z.com/feed/,vc,several_per_week,yes,no,Thesis content; treat as marketing not reporting
