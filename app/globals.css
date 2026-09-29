@@ -202,6 +202,71 @@ code {
   line-height: 1;
 }
 
+/* Footer */
+.app-footer {
+  width: 100%;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0.75rem 1rem 1.5rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .app-footer {
+    padding: 0 1.5rem 2rem;
+  }
+}
+
+.app-footer a {
+  color: var(--text-muted);
+}
+
+.app-footer a:hover {
+  color: var(--primary);
+}
+
+/* Legal / privacy */
+.legal-page h1 {
+  font-size: 1.75rem;
+  margin: 0 0 0.5rem;
+}
+
+.legal-page h2 {
+  font-size: 1.125rem;
+  margin: 1.75rem 0 0.5rem;
+}
+
+.legal-page p,
+.legal-page li {
+  color: var(--text-secondary);
+  font-size: 0.9375rem;
+}
+
+.legal-page ul {
+  padding-left: 1.25rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.legal-page li {
+  margin-bottom: 0.4rem;
+}
+
+.legal-updated {
+  color: var(--text-muted) !important;
+  font-size: 0.8125rem !important;
+  margin-bottom: 1.25rem;
+}
+
+.legal-note {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.8125rem !important;
+  color: var(--text-muted) !important;
+}
+
 /* Page header */
 .page-header {
   margin-bottom: 1.5rem;

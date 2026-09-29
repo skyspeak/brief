@@ -35,6 +35,10 @@ export default function AppShell({ children }) {
 
       <main className="app-main">{children}</main>
 
+      <footer className="app-footer">
+        <Link href="/privacy">Privacy Policy</Link>
+      </footer>
+
       <nav className="app-bottomnav" aria-label="Mobile">
         {NAV.map((item) => (
           <Link

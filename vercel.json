@@ -11,15 +11,15 @@
     },
     {
       "path": "/api/digest",
-      "schedule": "0 7 * * *"
+      "schedule": "0 7 * * 1,5"
     },
     {
       "path": "/api/bartma",
-      "schedule": "0 1 * * 1"
+      "schedule": "0 14 * * 3"
     },
     {
       "path": "/api/verification-desk",
-      "schedule": "0 14 * * 1"
+      "schedule": "0 14 * * 4"
     }
   ]
 }

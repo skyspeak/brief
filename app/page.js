@@ -33,6 +33,9 @@ export default function Home() {
   const [digestErr, setDigestErr] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState("");
+  const [deskSending, setDeskSending] = useState(false);
+  const [deskRes, setDeskRes] = useState(null);
+  const [deskErr, setDeskErr] = useState("");
 
   async function refreshWindowCount() {
     if (!key.trim()) return;
@@ -204,6 +207,36 @@ export default function Home() {
 
   async function sendTestDigest() {
     return sendDigestRequest({ test: true });
+  }
+
+  async function sendVerificationDesk({ dry = false } = {}) {
+    if (!requireKey()) return;
+    setDeskErr("");
+    setDeskRes(null);
+    setDeskSending(true);
+    try {
+      setProgress(
+        dry ? "Researching Verification Desk (dry)…" : "Researching & sending Verification Desk…"
+      );
+      const r = await fetch("/api/verification-desk", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ key, force: true, dry }),
+      });
+      const parsed = await parseApiResponse(r);
+      const d = parsed.data;
+      if (!d) throw new Error(apiError(parsed, "verification desk failed"));
+      if (d.error && !d.dry_run) throw new Error(d.error);
+      if (!r.ok && !d.dry_run) {
+        throw new Error(apiError(parsed, d.notice || "verification desk failed"));
+      }
+      setDeskRes(d);
+    } catch (e) {
+      setDeskErr(e.message);
+    } finally {
+      setDeskSending(false);
+      setProgress("");
+    }
   }
 
   async function ask() {
@@ -390,6 +423,71 @@ export default function Home() {
               <div className="result-body">{edition.markdown}</div>
             </div>
           ))}
+        </div>
+      )}
+
+      <div className="card">
+        <h2 className="card-title">Verification Desk</h2>
+        <p className="field-hint" style={{ marginTop: 0 }}>
+          Weekly Gemini + Google Search grade of the Verification Decade thesis. Emails{" "}
+          <strong>stuymusty@gmail.com</strong> (Thursdays ~7am Pacific via cron).
+        </p>
+        <button
+          type="button"
+          className="btn btn-secondary btn-block"
+          onClick={() => sendVerificationDesk({ dry: true })}
+          disabled={deskSending || digestSending || briefing}
+          style={{ marginBottom: "0.75rem" }}
+        >
+          {deskSending ? (
+            <>
+              <span className="spinner" aria-hidden /> Researching…
+            </>
+          ) : (
+            "Preview desk (dry run)"
+          )}
+        </button>
+        <button
+          type="button"
+          className="btn btn-primary btn-block"
+          onClick={() => sendVerificationDesk({ dry: false })}
+          disabled={deskSending || digestSending || briefing}
+        >
+          {deskSending ? (
+            <>
+              <span className="spinner" aria-hidden /> Sending desk…
+            </>
+          ) : (
+            "Send Verification Desk now"
+          )}
+        </button>
+        {progress && deskSending && (
+          <div className="alert alert-info" style={{ marginTop: "1rem", marginBottom: 0 }}>{progress}</div>
+        )}
+      </div>
+
+      {deskErr && <div className="alert alert-error">{deskErr}</div>}
+
+      {deskRes && (
+        <div className="result">
+          <div
+            className={
+              deskRes.sent || deskRes.dry_run ? "alert alert-success" : "alert alert-error"
+            }
+            style={{ marginBottom: "1rem" }}
+          >
+            {deskRes.sent
+              ? `Sent to ${deskRes.to} — ${deskRes.grade}: ${deskRes.headline} (${deskRes.id})`
+              : deskRes.dry_run
+                ? `Dry run — ${deskRes.grade}: ${deskRes.headline}`
+                : deskRes.error || "Not sent"}
+          </div>
+          {deskRes.html ? (
+            <div
+              className="result-body"
+              dangerouslySetInnerHTML={{ __html: deskRes.html }}
+            />
+          ) : null}
         </div>
       )}
 

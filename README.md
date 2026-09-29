@@ -7,9 +7,10 @@ Plus an on-demand **briefing console** and ask-over-corpus. Deploys to Vercel.
 ```
 Gmail inbox ──▶ /api/sync (daily cron) ──▶ Turso
 RSS feeds   ──▶ /api/ingest-rss (daily) ──▶┘ store into emails corpus
-    │
-Vercel Cron ──▶ /api/digest ──▶ buildDigest (LLM) ──▶ Gmail send
-Vercel Cron ──▶ /api/verification-desk (Mon) ──▶ Gemini + Google Search ──▶ Gmail
+                      │
+Vercel Cron ──▶ /api/digest (Mon/Fri) ──▶ buildDigest (LLM) ──▶ Gmail send
+Vercel Cron ──▶ /api/bartma (Wed) ──▶ Gemini + Search ──▶ Gmail
+Vercel Cron ──▶ /api/verification-desk (Thu) ──▶ Gemini + Search ──▶ Gmail
                       │
 Home (/) ──▶ briefing + ask ──▶ same corpus
 ```
@@ -83,8 +84,9 @@ Either value unlocks protected routes. Prefer `ACCESS_KEY` in the UI so you can 
 |----------|-------|---------|
 | Daily 04:00 UTC | `/api/ingest-rss` | Pull RSS articles into the corpus |
 | Daily 06:00 UTC | `/api/sync` | Pull new Gmail messages |
-| Daily 07:00 UTC | `/api/digest` | Send digest if interval elapsed |
-| Mondays 01:00 UTC | `/api/bartma` | The Bartma Brief (~Sunday 6pm Pacific) |
+| Mon & Fri 07:00 UTC | `/api/digest` | Send digest if interval elapsed |
+| Wednesdays 14:00 UTC | `/api/bartma` | The Bartma Brief (~7am Pacific) |
+| Thursdays 14:00 UTC | `/api/verification-desk` | Verification Desk / Market Wizard (~7am Pacific) |
 
 Requires `CRON_SECRET` in Vercel (sent as Bearer token on cron invocations). Set a separate `ACCESS_KEY` for the dashboard.
 
@@ -107,9 +109,25 @@ curl -H "Authorization: Bearer $CRON_SECRET" "https://<app>/api/bartma"
 
 Needs `maxDuration` up to 300s (Vercel Pro). Hobby may time out on the research step.
 
+## Verification Desk
+
+Weekly market-intelligence email that attacks the 16 Aug 2026 “Verification Decade” forecast. Uses **Gemini + Google Search**, grades the week (`NO MOVEMENT` / `DRIFT` / `TRIPPED`) against seven tripwires, and sends house-style HTML via connected Gmail.
+
+| | |
+|--|--|
+| To | `stuymusty@gmail.com` (override with `VERIFICATION_DESK_TO`) |
+| Subject | `Verification Desk — [D Mon] — [grade]: [headline]` |
+
+```bash
+curl -H "Authorization: Bearer $ACCESS_KEY" "https://<app>/api/verification-desk?dry=1&force=1"
+curl -H "Authorization: Bearer $ACCESS_KEY" "https://<app>/api/verification-desk?force=1"
+```
+
+Optional: `VERIFICATION_DESK_MODEL` (defaults to `GEMINI_MODEL` / `gemini-2.0-flash`).
+
 ## Switching models
 
-Default: **Gemini only**. OpenRouter fallback is off unless you set both `LLM_FALLBACK=openrouter` and `LLM_ENABLE_OPENROUTER_FALLBACK=1`.
+Default: **Gemini only**. If Gemini returns **429**, the app automatically tries OpenRouter’s free model when `OPENROUTER_API_KEY` is set (no extra env flags). Always-on OpenRouter fallback still needs `LLM_FALLBACK=openrouter` + `LLM_ENABLE_OPENROUTER_FALLBACK=1`.
 
 | Provider | Env var | Default model |
 |----------|---------|---------------|

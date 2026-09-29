@@ -1,4 +1,4 @@
-// app/api/bartma/route.js — The Bartma Brief (Sunday cron + manual).
+// app/api/bartma/route.js — The Bartma Brief (Wednesday cron + manual).
 import { isAuthorized } from "@/lib/auth";
 import { runBartmaBrief } from "@/lib/bartma";
 
