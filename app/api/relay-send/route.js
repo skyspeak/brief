@@ -1,6 +1,9 @@
 // POST /api/relay-send — send HTML mail (Resend on this account, then Gmail).
 // GET  /api/relay-send — domain status for this Resend key.
 // Auth: Authorization: Bearer <EMAIL_RELAY_SECRET|CRON_SECRET>
+//
+// Body: { to, subject, html, text?, cc?, fromName?, prefer?: "gmail"|"resend" }
+// prefer:"gmail" skips Resend and uses the connected Gmail account (same path as digests).
 
 import { isGmailConnected, sendHtmlEmail } from "@/lib/gmail";
 
@@ -29,6 +32,31 @@ async function resendJson(path, init) {
   return { ok: res.ok, status: res.status, data };
 }
 
+async function sendViaGmail({ to, cc, subject, html, fromName }) {
+  if (!(await isGmailConnected())) {
+    return { ok: false, error: "gmail not connected" };
+  }
+  try {
+    const result = await sendHtmlEmail({
+      to,
+      cc: cc || undefined,
+      subject,
+      html,
+      fromName: fromName || "dear[CC]",
+    });
+    return {
+      ok: true,
+      via: "gmail",
+      id: result.id,
+      from: result.from,
+      to: result.to,
+      cc: result.cc,
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "gmail send failed" };
+  }
+}
+
 export async function GET(req) {
   if (!authorized(req)) return Response.json({ error: "not found" }, { status: 404 });
   const domains = await resendJson("/domains");
@@ -47,11 +75,20 @@ export async function POST(req) {
 
   const body = await req.json().catch(() => ({}));
   const to = typeof body.to === "string" ? body.to.trim() : "";
+  const cc = typeof body.cc === "string" ? body.cc.trim() : "";
   const subject = typeof body.subject === "string" ? body.subject.trim() : "";
   const html = typeof body.html === "string" ? body.html : "";
   const text = typeof body.text === "string" ? body.text : "";
+  const fromName = typeof body.fromName === "string" ? body.fromName : "dear[CC]";
+  const prefer = typeof body.prefer === "string" ? body.prefer.trim().toLowerCase() : "";
   if (!to || !subject || !html) {
     return Response.json({ error: "to, subject, html required" }, { status: 400 });
+  }
+
+  if (prefer === "gmail") {
+    const gmail = await sendViaGmail({ to, cc, subject, html, fromName });
+    if (gmail.ok) return Response.json(gmail);
+    return Response.json({ error: gmail.error }, { status: 500 });
   }
 
   const from =
@@ -59,31 +96,33 @@ export async function POST(req) {
     "dear[CC] <onboarding@resend.dev>";
   const sent = await resendJson("/emails", {
     method: "POST",
-    body: JSON.stringify({ from, to, subject, html, ...(text ? { text } : {}) }),
+    body: JSON.stringify({
+      from,
+      to,
+      subject,
+      html,
+      ...(text ? { text } : {}),
+      ...(cc ? { cc: [cc] } : {}),
+    }),
   });
   if (sent.ok) {
-    return Response.json({ ok: true, via: "resend", id: sent.data?.id || null, from });
+    return Response.json({
+      ok: true,
+      via: "resend",
+      id: sent.data?.id || null,
+      from,
+      to,
+      cc: cc || null,
+    });
   }
 
   const resendError =
     sent.data && typeof sent.data.message === "string" ? sent.data.message : "resend failed";
 
-  try {
-    if (await isGmailConnected()) {
-      const result = await sendHtmlEmail({
-        to,
-        subject,
-        html,
-        fromName: typeof body.fromName === "string" ? body.fromName : "dear[CC]",
-      });
-      return Response.json({ ok: true, via: "gmail", id: result.id, from: result.from, to: result.to });
-    }
-  } catch (e) {
-    return Response.json(
-      { error: e instanceof Error ? e.message : "gmail send failed", resendError },
-      { status: 500 },
-    );
-  }
-
-  return Response.json({ error: resendError }, { status: 500 });
+  const gmail = await sendViaGmail({ to, cc, subject, html, fromName });
+  if (gmail.ok) return Response.json(gmail);
+  return Response.json(
+    { error: gmail.error || resendError, resendError },
+    { status: 500 },
+  );
 }
