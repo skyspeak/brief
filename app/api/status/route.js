@@ -42,8 +42,13 @@ function pipelineHint(counts, env) {
   if (!env.llm_ok) return "LLM chain has no configured providers — check GEMINI_API_KEY in Vercel.";
   if (!env.gmail_oauth) return "Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, then connect Gmail on Setup.";
   if (!env.gmail_connected) return "Connect Gmail on the Setup page — newsletters are read from that inbox.";
+  if (env.gmail_token_longevity === "expired") {
+    return "Gmail refresh token expired — reconnect on Setup. Publish OAuth consent to Production to stop 7-day Testing expiry.";
+  }
+  if (env.gmail_token_longevity === "at_risk") {
+    return "Gmail token may expire soon (OAuth Testing ≈7 days) — publish consent to Production and set GMAIL_REFRESH_TOKEN.";
+  }
   if (counts.total === 0) return "No emails synced yet — subscribe newsletters to your Gmail address, then Sync inbox.";
-  // gmail token longevity is attached later; keep generic body hints here.
   if (counts.with_body === 0) return "Emails stored but bodies empty — try Sync inbox again.";
   if (counts.with_body > 0 && counts.digested === 0)
     return "Ready — send digest from Home to synthesize the digest window into insights with source URLs.";
@@ -87,10 +92,17 @@ export async function GET(req) {
         ? "connected Gmail"
         : "DEFAULT_DIGEST_TO";
     const gmailToken = await getGmailTokenHealth();
+    const envWithToken = {
+      ...env,
+      llm_model_resolved,
+      llm_models_resolved,
+      gmail_token_longevity: gmailToken.longevity,
+      gmail_refresh_backup: gmailToken.has_env_backup,
+    };
 
     return Response.json({
       ok: counts.with_body > 0 && gmailToken.longevity !== "expired",
-      env: { ...env, llm_model_resolved, llm_models_resolved },
+      env: envWithToken,
       counts,
       recent,
       gmail: {
@@ -108,7 +120,7 @@ export async function GET(req) {
         digest_to: digestTo,
         digest_to_source: digestToSource,
       },
-      hint: pipelineHint(counts, env),
+      hint: pipelineHint(counts, envWithToken),
     });
   } catch (e) {
     return Response.json({ error: e.message }, { status: 500 });
