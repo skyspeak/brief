@@ -1,6 +1,6 @@
 // app/api/status/route.js — pipeline health: email counts + recent ingest state.
 //   /api/status?key=<ACCESS_KEY>
-import { emailStatus, getLastDigestRun, getLastGmailSync } from "@/lib/db";
+import { emailStatus, getLastDigestRun, getLastGmailSync, supabaseConfigured } from "@/lib/db";
 import { llmEnvStatus, resolveModelFor, getProviderChain } from "@/lib/llm";
 import { isGmailConnected, getGmailEmail, getGmailTokenHealth } from "@/lib/gmail";
 import { isAuthorized, authEnvStatus } from "@/lib/auth";
@@ -15,7 +15,7 @@ async function envCheck() {
   const auth = authEnvStatus();
 
   return {
-    turso: !!(process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN),
+    supabase: supabaseConfigured(),
     gmail_oauth: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
     gmail_connected: gmailConnected,
     gmail_email: gmailConnected ? await getGmailEmail() : null,
@@ -32,7 +32,9 @@ async function envCheck() {
 }
 
 function pipelineHint(counts, env) {
-  if (!env.turso) return "Set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN in Vercel.";
+  if (!env.supabase) {
+    return "Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Vercel (run supabase/schema.sql once).";
+  }
   if (!env.ui_key_configured) {
     return "Set ACCESS_KEY (and CRON_SECRET for cron) in Vercel — run npm run gen-secrets.";
   }
@@ -62,7 +64,7 @@ export async function GET(req) {
 
   try {
     const env = await envCheck();
-    if (!env.turso) {
+    if (!env.supabase) {
       return Response.json({
         ok: false,
         env,

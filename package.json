@@ -19,8 +19,8 @@
     "x:weekly": "uv run x_reader.py weekly"
   },
   "dependencies": {
-    "@libsql/client": "^0.15.0",
     "@sparticuz/chromium": "^131.0.0",
+    "@supabase/supabase-js": "^2.117.3",
     "googleapis": "^144.0.0",
     "next": "^14.2.5",
     "puppeteer-core": "^23.11.1",

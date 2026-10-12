@@ -1,54 +1,78 @@
 #!/usr/bin/env node
 /**
- * seed-feeds.mjs
- *
- * Upserts every `delivery=rss` row from data/sources.csv into the `feeds`
- * table. Idempotent: re-run after editing the CSV and only the changed fields
- * move. Rows flagged confidence=broken are skipped.
+ * seed-feeds.mjs — upsert RSS rows from data/sources.csv into Supabase.
  *
  *   node scripts/seed-feeds.mjs
  *   node scripts/seed-feeds.mjs --deactivate-missing
  *
- * Requires TURSO_DATABASE_URL and TURSO_AUTH_TOKEN in the environment
- * (source .env.local first, or use `dotenv -e .env.local -- node ...`).
- *
- * Note: /api/ingest-rss also auto-seeds when the feeds table is empty, so a
- * manual seed is only needed to refresh CSV changes before the next cron.
+ * Requires SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (e.g. in .env.local).
+ * Schema must already exist (run supabase/schema.sql in the SQL editor).
  */
-import { createClient } from "@libsql/client";
+import { createClient } from "@supabase/supabase-js";
+import { readFileSync, existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const CSV = resolve(__dirname, "../data/sources.csv");
+const root = resolve(__dirname, "..");
+const CSV = resolve(root, "data/sources.csv");
 const DEACTIVATE_MISSING = process.argv.includes("--deactivate-missing");
 
-if (!process.env.TURSO_DATABASE_URL) {
-  console.error("Set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN first.");
+function loadEnv() {
+  for (const name of [".env.local", ".env"]) {
+    const path = resolve(root, name);
+    if (!existsSync(path)) continue;
+    for (const line of readFileSync(path, "utf8").split("\n")) {
+      const m = line.match(/^([^#=]+)=(.*)$/);
+      if (m && !process.env[m[1].trim()]) process.env[m[1].trim()] = m[2].trim();
+    }
+    break;
+  }
+}
+
+loadEnv();
+
+const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const key =
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
+if (!url || !key) {
+  console.error("Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY first.");
   process.exit(1);
 }
 
-const db = createClient({
-  url: process.env.TURSO_DATABASE_URL,
-  authToken: process.env.TURSO_AUTH_TOKEN,
+const db = createClient(url, key, {
+  auth: { persistSession: false, autoRefreshToken: false },
 });
 
 function parseCsv(text) {
   const rows = [];
-  let row = [], field = "", q = false;
+  let row = [],
+    field = "",
+    q = false;
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
     if (q) {
-      if (c === '"' && text[i + 1] === '"') { field += '"'; i++; }
-      else if (c === '"') q = false;
+      if (c === '"' && text[i + 1] === '"') {
+        field += '"';
+        i++;
+      } else if (c === '"') q = false;
       else field += c;
     } else if (c === '"') q = true;
-    else if (c === ",") { row.push(field); field = ""; }
-    else if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
-    else if (c !== "\r") field += c;
+    else if (c === ",") {
+      row.push(field);
+      field = "";
+    } else if (c === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+    } else if (c !== "\r") field += c;
   }
-  if (field || row.length) { row.push(field); rows.push(row); }
+  if (field || row.length) {
+    row.push(field);
+    rows.push(row);
+  }
   return rows.filter((r) => r.some((v) => v !== ""));
 }
 
@@ -61,57 +85,51 @@ const rssRows = records.filter(
 );
 const emailOnly = records.filter((r) => r.delivery === "email");
 
-await db.execute(`
-  CREATE TABLE IF NOT EXISTS feeds (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    category TEXT,
-    feed_url TEXT NOT NULL UNIQUE,
-    site_url TEXT,
-    active INTEGER NOT NULL DEFAULT 1,
-    weight INTEGER NOT NULL DEFAULT 1,
-    max_items INTEGER NOT NULL DEFAULT 10,
-    etag TEXT,
-    last_modified TEXT,
-    last_fetched_at TEXT,
-    last_status TEXT,
-    last_error TEXT,
-    consecutive_failures INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  )`);
-
 let upserts = 0;
 for (const r of rssRows) {
-  await db.execute({
-    sql: `INSERT INTO feeds (name, category, feed_url, site_url, weight, max_items, active)
-          VALUES (?, ?, ?, ?, ?, ?, 1)
-          ON CONFLICT(feed_url) DO UPDATE SET
-            name      = excluded.name,
-            category  = excluded.category,
-            site_url  = excluded.site_url,
-            weight    = excluded.weight,
-            max_items = excluded.max_items,
-            active    = 1`,
-    args: [
-      r.name,
-      r.category || null,
-      r.feed_url,
-      r.site_url || null,
-      Number(r.weight || 1),
-      Number(r.max_items || 10),
-    ],
-  });
+  const patch = {
+    name: r.name,
+    category: r.category || null,
+    site_url: r.site_url || null,
+    weight: Number(r.weight || 1),
+    max_items: Number(r.max_items || 10),
+    active: 1,
+  };
+  const { data: existing, error: readErr } = await db
+    .from("feeds")
+    .select("id")
+    .eq("feed_url", r.feed_url)
+    .maybeSingle();
+  if (readErr) {
+    console.error(readErr.message);
+    process.exit(1);
+  }
+  const { error } = existing?.id
+    ? await db.from("feeds").update(patch).eq("id", existing.id)
+    : await db.from("feeds").insert({ ...patch, feed_url: r.feed_url });
+  if (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
   upserts++;
 }
 
 if (DEACTIVATE_MISSING) {
-  const keep = rssRows.map((r) => r.feed_url);
-  const placeholders = keep.map(() => "?").join(",");
-  const { rowsAffected } = await db.execute({
-    sql: `UPDATE feeds SET active = 0 WHERE feed_url NOT IN (${placeholders})`,
-    args: keep,
-  });
-  console.log(`deactivated ${rowsAffected} feed(s) no longer in the CSV`);
+  const keep = new Set(rssRows.map((r) => r.feed_url));
+  const { data, error } = await db.from("feeds").select("id, feed_url").eq("active", 1);
+  if (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
+  const ids = (data || []).filter((f) => !keep.has(f.feed_url)).map((f) => f.id);
+  if (ids.length) {
+    const { error: updErr } = await db.from("feeds").update({ active: 0 }).in("id", ids);
+    if (updErr) {
+      console.error(updErr.message);
+      process.exit(1);
+    }
+    console.log(`deactivated ${ids.length} feed(s) no longer in the CSV`);
+  }
 }
 
 console.log(`\nseeded ${upserts} rss feed(s)`);

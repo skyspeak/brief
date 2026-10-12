@@ -34,14 +34,14 @@ HOW IT GETS BOOKMARKS
   WATCH_TOPICS=AI agents, AI liability     topics to track (else picked from what you save)
   VIBE_WEEKS=12             how many weeks of mood and numbers to track
   VIBES_EXTERNAL=gdelt,hn   free outside sources: GDELT news tone + volume, Hacker News; empty = only your feed
-  BRIEF_URL=https://<app>.vercel.app     push bookmarks into the brief Turso corpus
+  BRIEF_URL=https://<app>.vercel.app     push bookmarks into the brief Supabase corpus
   ACCESS_KEY= or CRON_SECRET=            auth for POST /api/ingest-x (auto after sync if set)
 
 COMMANDS
   login                      open a visible browser, sign in to X once
   sync [--limit N] [--full]  get new bookmarks, process them, build site/
   build                      rebuild site/ from stored items
-  push-brief [--days N]      POST recent items to brief /api/ingest-x (digests/briefings)
+  push-brief [--days N]      POST recent items to brief /api/ingest-x → Supabase
   weekly|angles [--days N] [--deploy]
                              find links in your notes + reading, pitch angles; you write the posts
   pull-notes                 copy notebook entries from Cloudflare to xreader_data/ + LEARNINGS.md
@@ -569,7 +569,7 @@ def cmd_sync(args) -> None:
         cmd_push_brief(argparse.Namespace(days=3))
 
 
-# ---------- push into brief (Next.js / Turso corpus) ----------
+# ---------- push into brief (Next.js / Supabase corpus) ----------
 
 def _brief_payload(it: dict) -> dict | None:
     if not it.get("id") or it.get("error"):
@@ -2769,7 +2769,7 @@ def main() -> None:
     sub.add_parser("build").set_defaults(fn=cmd_build)
     sub.add_parser("deploy").set_defaults(fn=cmd_deploy)
     sub.add_parser("pull-notes").set_defaults(fn=cmd_pull_notes)
-    p = sub.add_parser("push-brief", help="POST recent bookmarks into the brief Turso corpus")
+    p = sub.add_parser("push-brief", help="POST recent bookmarks into the brief Supabase corpus")
     p.add_argument("--days", type=int, default=14, help="how many days of items to push (default 14)")
     p.set_defaults(fn=cmd_push_brief)
     for name in ("weekly", "angles"):

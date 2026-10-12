@@ -5,7 +5,7 @@ and distills them into **one cross-newsletter digest** emailed from your Gmail a
 Plus an on-demand **briefing console** and ask-over-corpus. Deploys to Vercel.
 
 ```
-Gmail inbox ──▶ /api/sync (daily cron) ──▶ Turso
+Gmail inbox ──▶ /api/sync (daily cron) ──▶ Supabase
 RSS feeds   ──▶ /api/ingest-rss (daily) ──▶┘ store into emails corpus
 X bookmarks ──▶ x_reader.py (local) ──▶ /api/ingest-x ──┘
                       │
@@ -23,8 +23,12 @@ Home (/) ──▶ briefing + ask ──▶ same corpus
 3. Create **OAuth 2.0 Client** (Web application):
    - Authorized redirect URI: `https://<your-app>.vercel.app/api/gmail/callback`
    - (Local dev: `http://localhost:3000/api/gmail/callback`)
-4. Set environment variables in Vercel (see `.env.example`).
-5. Generate long-lived secrets locally: `npm run gen-secrets` → set **both** `ACCESS_KEY` and `CRON_SECRET` in Vercel (they can differ).
+4. Create a [Supabase](https://supabase.com) project → SQL Editor → run `supabase/schema.sql`.
+5. Set environment variables in Vercel (see below). At minimum:
+   - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+   - `ACCESS_KEY`, `CRON_SECRET` (`npm run gen-secrets`)
+   - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+   - `GEMINI_API_KEY`
 6. Deploy, then open **Setup** in the app → paste `ACCESS_KEY` → **Connect Gmail**.
 7. Subscribe newsletters using your Gmail address → **Sync inbox**.
 
@@ -50,7 +54,7 @@ Without a label, sync pulls recent inbox mail matching the default query.
 | `app/api/verification-desk/route.js` | Weekly Verification Desk (Gemini search → Gmail) |
 | `lib/verification-desk.js` | Research, grade, email-safe HTML render, send |
 | `x_reader.py` | Local X bookmarks → site + push to brief corpus |
-| `app/api/ingest-x/route.js` | Accept X items from `x_reader.py` into Turso |
+| `app/api/ingest-x/route.js` | Accept X items from `x_reader.py` into Supabase |
 | `app/confirm/page.js` | Setup: connect Gmail, sync, confirm subscriptions |
 | `lib/personas.js` | Who gets a digest and how it's framed |
 
@@ -65,7 +69,7 @@ Optional second ingest path. Articles land in the same `emails` table (ids prefi
 ```bash
 npm run verify-feeds              # probe data/sources.csv
 npm run verify-feeds -- --write   # repair broken feed URLs
-npm run seed-feeds                # upsert active feeds into Turso (needs TURSO_* env)
+npm run seed-feeds                # upsert active feeds into Supabase (needs SUPABASE_* env)
 npm run gen-secrets               # print fresh ACCESS_KEY + CRON_SECRET
 curl -H "Authorization: Bearer $CRON_SECRET" https://<app>/api/ingest-rss
 ```
@@ -74,7 +78,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://<app>/api/ingest-rss
 
 ## X bookmarks (`x_reader.py`)
 
-Local Playwright script: scrape your X bookmarks → summaries/PDFs → optional Cloudflare reading site, and **push into the same Turso corpus** digests/briefings use.
+Local Playwright script: scrape your X bookmarks → summaries/PDFs → optional Cloudflare reading site, and **push into the same Supabase corpus** digests/briefings use.
 
 Needs [uv](https://docs.astral.sh/uv/) (or Python 3.11+). Runs on your machine — Vercel cannot run the X browser session.
 
@@ -92,6 +96,17 @@ npm run x:push            # push last 14 days into /api/ingest-x
 ```
 
 Items land as `x:<tweetId>` with `source_type=x`, so Home briefing / digest pick them up like RSS.
+
+## Database (Supabase)
+
+Replaces Turso. Create a project, run `supabase/schema.sql` in the SQL Editor, then set on Vercel:
+
+| Env var | Purpose |
+|---------|---------|
+| `SUPABASE_URL` | Project URL (`https://xxxx.supabase.co`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Service role** key (server only — bypasses RLS) |
+
+Remove any old `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` vars.
 
 ## Access secrets
 
@@ -116,7 +131,7 @@ Requires `CRON_SECRET` in Vercel (sent as Bearer token on cron invocations). Set
 
 ## The Bartma Brief
 
-Weekly executive opportunity digest for Megh Gautam. Uses **Gemini + Google Search grounding**, verifies apply URLs, tracks sent items in Turso, and emails via the connected Gmail account (`prefer`-style path in `sendHtmlEmail`).
+Weekly executive opportunity digest for Megh Gautam. Uses **Gemini + Google Search grounding**, verifies apply URLs, tracks sent items in Supabase, and emails via the connected Gmail account (`prefer`-style path in `sendHtmlEmail`).
 
 | | |
 |--|--|

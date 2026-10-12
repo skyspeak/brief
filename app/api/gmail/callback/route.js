@@ -32,7 +32,7 @@ export async function GET(req) {
          </li>
          <li style="margin-bottom:0.5rem">
            Paste the refresh token below into Vercel as <code>GMAIL_REFRESH_TOKEN</code>, then redeploy.
-           That survives Turso wipes and is the durable backup.
+           That survives DB wipes and is the durable backup.
          </li>
          <li>If you already published to Production, reconnect once so you get a non-expiring refresh token.</li>
        </ol>

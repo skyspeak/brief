@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Seed the local database with sample newsletters for testing the ask console and digest preview.
-import { createClient } from "@libsql/client";
+// Seed sample newsletters into Supabase for testing the ask console / digest preview.
+import { createClient } from "@supabase/supabase-js";
 import { readFileSync, existsSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -22,10 +22,16 @@ function loadEnv() {
 
 loadEnv();
 
-const url = process.env.TURSO_DATABASE_URL || "file:local.db";
-const db = createClient({
-  url,
-  authToken: process.env.TURSO_AUTH_TOKEN,
+const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const key =
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
+if (!url || !key) {
+  console.error("Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY first.");
+  process.exit(1);
+}
+
+const db = createClient(url, key, {
+  auth: { persistSession: false, autoRefreshToken: false },
 });
 
 const now = Math.floor(Date.now() / 1000);
@@ -73,19 +79,24 @@ const samples = [
   },
 ];
 
-await db.execute(`
-  CREATE TABLE IF NOT EXISTS emails (
-    id TEXT PRIMARY KEY, sender TEXT, subject TEXT,
-    body_text TEXT, summary TEXT, tags TEXT,
-    received_at INTEGER, digested INTEGER DEFAULT 0
-  )`);
-
 for (const s of samples) {
-  await db.execute({
-    sql: `INSERT OR REPLACE INTO emails (id,sender,subject,body_text,summary,tags,received_at,digested)
-          VALUES (?,?,?,?,?,?,?,0)`,
-    args: [s.id, s.sender, s.subject, s.summary, s.summary, s.tags, s.received_at],
-  });
+  const { error } = await db.from("emails").upsert(
+    {
+      id: s.id,
+      sender: s.sender,
+      subject: s.subject,
+      body_text: s.summary,
+      summary: s.summary,
+      tags: s.tags,
+      received_at: s.received_at,
+      digested: 0,
+    },
+    { onConflict: "id" }
+  );
+  if (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
 }
 
 console.log(`Seeded ${samples.length} sample newsletters into ${url}`);
