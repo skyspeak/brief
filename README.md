@@ -133,6 +133,8 @@ Requires `CRON_SECRET` in Vercel (sent as Bearer token on cron invocations). Set
 
 Weekly executive opportunity digest for Megh Gautam. Uses **Gemini + Google Search grounding**, verifies apply URLs, tracks sent items in Supabase, and emails via the connected Gmail account (`prefer`-style path in `sendHtmlEmail`).
 
+Every edition covers three lanes: **open roles**, **board opportunities**, and **speaking opportunities**. If a week has no new verified finds, the cron still sends by resurfacing still-live prior opportunities.
+
 | | |
 |--|--|
 | To | `skyspeak@gmail.com` (override with `BARTMA_TO`) |
