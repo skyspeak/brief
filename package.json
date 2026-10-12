@@ -10,7 +10,13 @@
     "seed": "node scripts/seed.mjs",
     "verify-feeds": "node scripts/verify-feeds.mjs",
     "seed-feeds": "node scripts/seed-feeds.mjs",
-    "gen-secrets": "node scripts/gen-secrets.mjs"
+    "gen-secrets": "node scripts/gen-secrets.mjs",
+    "x:login": "uv run x_reader.py login",
+    "x:sync": "uv run x_reader.py sync",
+    "x:build": "uv run x_reader.py build",
+    "x:push": "uv run x_reader.py push-brief",
+    "x:run": "uv run x_reader.py run",
+    "x:weekly": "uv run x_reader.py weekly"
   },
   "dependencies": {
     "@libsql/client": "^0.15.0",

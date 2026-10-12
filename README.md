@@ -7,6 +7,7 @@ Plus an on-demand **briefing console** and ask-over-corpus. Deploys to Vercel.
 ```
 Gmail inbox ──▶ /api/sync (daily cron) ──▶ Turso
 RSS feeds   ──▶ /api/ingest-rss (daily) ──▶┘ store into emails corpus
+X bookmarks ──▶ x_reader.py (local) ──▶ /api/ingest-x ──┘
                       │
 Vercel Cron ──▶ /api/digest (Mon/Fri) ──▶ buildDigest (LLM) ──▶ Gmail send
 Vercel Cron ──▶ /api/bartma (Wed) ──▶ Gemini + Search ──▶ Gmail
@@ -48,6 +49,8 @@ Without a label, sync pulls recent inbox mail matching the default query.
 | `app/api/digest/route.js` | Scheduled digest send |
 | `app/api/verification-desk/route.js` | Weekly Verification Desk (Gemini search → Gmail) |
 | `lib/verification-desk.js` | Research, grade, email-safe HTML render, send |
+| `x_reader.py` | Local X bookmarks → site + push to brief corpus |
+| `app/api/ingest-x/route.js` | Accept X items from `x_reader.py` into Turso |
 | `app/confirm/page.js` | Setup: connect Gmail, sync, confirm subscriptions |
 | `lib/personas.js` | Who gets a digest and how it's framed |
 
@@ -68,6 +71,27 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://<app>/api/ingest-rss
 ```
 
 `data/sources.csv` lists ~45 RSS feeds and ~11 email-only sources (keep those on Gmail). Dead feeds auto-deactivate after repeated failures. The first `/api/ingest-rss` run **auto-seeds** feeds from the CSV when the table is empty.
+
+## X bookmarks (`x_reader.py`)
+
+Local Playwright script: scrape your X bookmarks → summaries/PDFs → optional Cloudflare reading site, and **push into the same Turso corpus** digests/briefings use.
+
+Needs [uv](https://docs.astral.sh/uv/) (or Python 3.11+). Runs on your machine — Vercel cannot run the X browser session.
+
+```bash
+# .env (repo root)
+X_AUTH_TOKEN=...          # or: npm run x:login
+X_CT0=...
+GEMINI_API_KEY=...        # SUMMARY_BACKEND=auto uses Gemini when set
+BRIEF_URL=https://<app>.vercel.app
+ACCESS_KEY=...            # same key as the dashboard
+
+npm run x:login           # once: visible browser sign-in
+npm run x:sync            # fetch + process (+ auto push-brief if BRIEF_URL set)
+npm run x:push            # push last 14 days into /api/ingest-x
+```
+
+Items land as `x:<tweetId>` with `source_type=x`, so Home briefing / digest pick them up like RSS.
 
 ## Access secrets
 

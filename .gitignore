@@ -27,3 +27,9 @@ build/
 __pycache__/
 *.pyc
 .vite/
+
+# x_reader.py local artifacts (Playwright profile, PDFs, static site)
+xreader_data/
+site/
+functions/
+wrangler.toml
