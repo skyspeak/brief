@@ -190,10 +190,9 @@ If OpenRouter returns **402** (“never purchased credits”), free routes often
 **Make it durable:**
 
 1. [OAuth consent screen](https://console.cloud.google.com/apis/credentials/consent) → **Publish to Production** (add yourself as a test user first while still in Testing).
-2. Reconnect Gmail on Setup (forces a fresh refresh token).
-3. On the connect confirmation page, copy the refresh token → set `GMAIL_REFRESH_TOKEN` in Vercel → redeploy.
+2. Reconnect Gmail on Setup. The new refresh token is stored automatically and used immediately.
 
-The app also re-persists rotated refresh tokens, probes auth on every sync, and surfaces expiry on Setup.
+`GMAIL_REFRESH_TOKEN` is optional. The app uses it only when the database has no token (for example after a wipe). A stale env value does not override a reconnect.
 
 - **Restricted scopes** — `gmail.modify` / `gmail.send` show an unverified-app warning until Google verification; fine for personal use under the unverified user cap.
 - **Re-auth after scope changes** — revoke at [myaccount.google.com/permissions](https://myaccount.google.com/permissions) and reconnect on Setup.

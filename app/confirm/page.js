@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { parseApiResponse, apiError } from "@/lib/parse-api-response";
 import { useAccessKey } from "../components/useAccessKey";
@@ -110,7 +110,7 @@ function ConfirmCard({ c, keyVal, onConfirmed }) {
 }
 
 export default function SetupPage() {
-  const { key, setKey } = useAccessKey();
+  const { key, setKey, ready } = useAccessKey();
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [gmail, setGmail] = useState(null);
@@ -119,6 +119,18 @@ export default function SetupPage() {
   const [syncMsg, setSyncMsg] = useState("");
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [justConnected, setJustConnected] = useState(false);
+  const [connectedEmail, setConnectedEmail] = useState("");
+  const bootstrapped = useRef(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("gmail") === "connected") {
+      setJustConnected(true);
+      setConnectedEmail(params.get("email") || "");
+      window.history.replaceState({}, "", "/confirm");
+    }
+  }, []);
 
   const loadGmail = useCallback(async () => {
     if (!key.trim()) return;
@@ -160,6 +172,12 @@ export default function SetupPage() {
     return () => clearInterval(t);
   }, [autoRefresh, key, load]);
 
+  useEffect(() => {
+    if (!ready || !key.trim() || bootstrapped.current) return;
+    bootstrapped.current = true;
+    loadGmail();
+  }, [ready, key, loadGmail]);
+
   function connectGmail() {
     if (!key.trim()) {
       setErr("Add your access key first.");
@@ -199,7 +217,7 @@ export default function SetupPage() {
   }
 
   function copyAddress() {
-    const addr = data?.inbound_address || gmail?.email;
+    const addr = data?.inbound_address || gmail?.email || connectedEmail;
     if (!addr) return;
     navigator.clipboard.writeText(addr);
     setCopied(true);
@@ -209,7 +227,11 @@ export default function SetupPage() {
   const pending = data?.pending_list || [];
   const confirmed = data?.confirmed_list || [];
   const manual = (data?.confirmations || []).filter((c) => c.status === "manual");
-  const gmailAddress = data?.inbound_address || gmail?.email;
+  const gmailAddress = data?.inbound_address || gmail?.email || connectedEmail;
+  const authBroken = gmail?.token?.longevity === "expired" || gmail?.probe?.ok === false;
+  const connectedOk = !!(gmail?.connected && !authBroken);
+  const showConnected = connectedOk || (justConnected && !gmail);
+  const shownEmail = gmail?.email || connectedEmail || "your account";
 
   return (
     <>
@@ -225,21 +247,16 @@ export default function SetupPage() {
         <h2 className="card-title">1. Connect Gmail</h2>
         <AccessKeyField value={key} onChange={setKey} id="setup-key" onBlur={loadGmail} />
 
-        {gmail?.connected && gmail?.token?.longevity !== "expired" && gmail?.probe?.ok !== false ? (
-          <div className="alert alert-success" style={{ marginBottom: "1rem" }}>
-            Connected as <strong>{gmail.email || "your account"}</strong>
-            {gmail.last_sync_at && (
-              <span> · last sync {fmtTime(gmail.last_sync_at)}</span>
-            )}
-            {gmail.token?.has_env_backup && (
-              <span> · durable <code>GMAIL_REFRESH_TOKEN</code> backup set</span>
-            )}
-          </div>
-        ) : gmail?.oauth_configured === false ? (
+        {gmail?.oauth_configured === false ? (
           <div className="alert alert-warning" style={{ marginBottom: "1rem" }}>
             Add <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> in Vercel, then redeploy.
           </div>
-        ) : gmail?.connected ? (
+        ) : showConnected ? (
+          <div className="alert alert-success" style={{ marginBottom: "1rem" }}>
+            Connected as <strong>{shownEmail}</strong>
+            {gmail?.last_sync_at && <span> · last sync {fmtTime(gmail.last_sync_at)}</span>}
+          </div>
+        ) : gmail?.connected && authBroken ? (
           <div className="alert alert-error" style={{ marginBottom: "1rem" }}>
             {gmail.probe?.hint || gmail.token?.hint || "Gmail token needs reconnect."}
           </div>
@@ -249,43 +266,31 @@ export default function SetupPage() {
           </div>
         )}
 
-        {(gmail?.token?.longevity === "at_risk" ||
-          gmail?.token?.longevity === "ok" ||
-          gmail?.token?.longevity === "durable") &&
-          gmail?.token?.hint && (
-            <div
-              className={`alert ${gmail.token.longevity === "at_risk" ? "alert-warning" : "alert-info"}`}
-              style={{ marginBottom: "1rem" }}
-            >
-              <strong>Long-lived Gmail token:</strong> {gmail.token.hint}{" "}
-              <a
-                href={gmail.token.oauth_publish_url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Open OAuth consent →
-              </a>
-            </div>
-          )}
+        {gmail?.token?.longevity === "at_risk" && gmail?.token?.hint && (
+          <div className="alert alert-warning" style={{ marginBottom: "1rem" }}>
+            {gmail.token.hint}{" "}
+            <a href={gmail.token.oauth_publish_url} target="_blank" rel="noopener noreferrer">
+              Open OAuth consent →
+            </a>
+          </div>
+        )}
 
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-          {(!gmail?.connected ||
-            gmail?.token?.longevity === "expired" ||
-            gmail?.probe?.ok === false) && (
+          {gmail?.oauth_configured !== false && !showConnected && (
             <button type="button" className="btn btn-primary btn-block" onClick={connectGmail}>
               {gmail?.connected ? "Reconnect Gmail" : "Connect Gmail"}
             </button>
           )}
-          {gmail?.connected && gmail?.token?.longevity !== "expired" && gmail?.probe?.ok !== false && (
+          {showConnected && (
             <button type="button" className="btn btn-secondary btn-block" onClick={connectGmail}>
-              Reconnect Gmail (refresh token)
+              Reconnect Gmail
             </button>
           )}
           <button
             type="button"
             className="btn btn-secondary btn-block"
             onClick={syncInbox}
-            disabled={syncing || !gmail?.connected || gmail?.probe?.ok === false}
+            disabled={syncing || !connectedOk}
           >
             {syncing ? "Syncing inbox…" : "Sync inbox now"}
           </button>

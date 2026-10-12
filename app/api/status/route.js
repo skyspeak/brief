@@ -48,7 +48,7 @@ function pipelineHint(counts, env) {
     return "Gmail refresh token expired — reconnect on Setup. Publish OAuth consent to Production to stop 7-day Testing expiry.";
   }
   if (env.gmail_token_longevity === "at_risk") {
-    return "Gmail token may expire soon (OAuth Testing ≈7 days) — publish consent to Production and set GMAIL_REFRESH_TOKEN.";
+    return "Gmail token may expire soon (OAuth Testing ≈7 days) — publish the consent screen to Production and reconnect.";
   }
   if (counts.total === 0) return "No emails synced yet — subscribe newsletters to your Gmail address, then Sync inbox.";
   if (counts.with_body === 0) return "Emails stored but bodies empty — try Sync inbox again.";
