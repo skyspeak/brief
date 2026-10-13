@@ -1,6 +1,6 @@
 // POST /api/relay-send — send HTML mail (Resend on this account, then Gmail).
 // GET  /api/relay-send — domain status for this Resend key.
-// Auth: Authorization: Bearer <EMAIL_RELAY_SECRET|CRON_SECRET>
+// Auth: Authorization: Bearer <EMAIL_RELAY_SECRET|CRON_SECRET|one of EMAIL_RELAY_EXTRA_SECRETS>
 //
 // Body: { to, subject, html, text?, cc?, fromName?, prefer?: "gmail"|"resend" }
 // prefer:"gmail" skips Resend and uses the connected Gmail account (same path as digests).
@@ -11,10 +11,17 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
+// EMAIL_RELAY_EXTRA_SECRETS: comma-separated, one per outside caller (e.g. the
+// Ten Themes Railway job), so each can be rotated without touching the others.
 function authorized(req) {
-  const secret = process.env.EMAIL_RELAY_SECRET || process.env.CRON_SECRET;
-  if (!secret) return false;
-  return req.headers.get("authorization") === `Bearer ${secret}`;
+  const secrets = [
+    process.env.EMAIL_RELAY_SECRET || process.env.CRON_SECRET,
+    ...(process.env.EMAIL_RELAY_EXTRA_SECRETS || "").split(","),
+  ]
+    .map((s) => (s || "").trim())
+    .filter(Boolean);
+  const header = req.headers.get("authorization") || "";
+  return secrets.some((s) => header === `Bearer ${s}`);
 }
 
 async function resendJson(path, init) {
